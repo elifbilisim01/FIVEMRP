@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Roboto } from "next/font/google";
+import { Pointer } from "@/components/ui/pointer";
 import "./globals.css";
-
+import "animate.css";
+import { Particles } from "@/components/ui/particles";
+import { TooltipProvider } from "@/components/ui/tooltip";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -10,6 +13,13 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// 1. Roboto fontunu tanımlıyoruz
+const roboto = Roboto({
+  weight: ["300", "400", "500", "700"], // İhtiyacın olan kalınlıkları seçebilirsin
+  subsets: ["latin"],
+  variable: "--font-roboto", // CSS değişkeni tanımlıyoruz
 });
 
 export const metadata: Metadata = {
@@ -25,9 +35,26 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // 2. roboto.variable değerini html className alanına ekliyoruz
+      className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <TooltipProvider>
+        {/* 3. Fontu body üzerinde sınıf olarak çağırıyoruz */}
+        <body
+          className={`${geistSans.className} min-h-full animate__animated animate__fadeIn `}
+        >
+          <Pointer className="z-999" />
+
+          <div className="fixed inset-0 w-screen h-screen overflow-hidden pointer-events-none -z-1">
+            <div className="snowflake"></div>
+            <div className="snowflake"></div>
+            <div className="snowflake"></div>
+            <div className="snowflake"></div>
+            <div className="snowflake"></div>
+          </div>
+          {children}
+        </body>
+      </TooltipProvider>
     </html>
   );
 }

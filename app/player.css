@@ -1,0 +1,51 @@
+.rhap_time {
+  color: white !important;
+  
+ /* background-color: rgba(0, 0, 0, 0.808);*/
+
+  border-radius: 1px;
+  
+}
+
+.rhap_container {
+  box-sizing: border-box !important;
+
+  flex-direction: column !important;
+  width: 100% !important;
+  padding: 10px 15px !important;
+  font-family: inherit !important;
+  line-height: 1 !important;
+  display: flex !important;
+  box-shadow: 0 0 200px rgb(0, 0, 0) !important;
+  background-color: rgba(0, 0, 0, 0.432) !important;
+  /* Hangi özelliğin değişeceğini ve süresini topluca yazıyoruz */
+  transition: background-color 0.4s ease !important;
+}
+
+.rhap_container:hover {
+
+  background-color: rgba(0, 0, 0, 0.616) !important;
+}
+
+.rhap_progress-indicator {
+  background-color: rgba(255, 255, 255, 0.836) !important;
+}
+
+.rhap_main-controls-button {
+
+  color: rgba(255, 255, 255, 0.842) !important;
+  border-radius: 10px !important;
+}
+
+
+.rhap_repeat-button{
+   color: rgba(255, 255, 255, 0.842) !important;
+}
+
+.rhap_button-clear {
+     color: rgba(255, 255, 255, 0.842) !important;  
+}
+
+.rhap_volume-indicator{
+      background-color: rgba(255, 255, 255, 0.836) !important;
+}
