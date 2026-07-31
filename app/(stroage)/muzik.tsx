@@ -3,7 +3,7 @@ import { create } from "zustand";
 type Store = {
   musicName: string;
   uzanti : string,
-  setmusic: (musicname: string) => void;
+  setmusic: (musicname: string , type : string) => void;
   setvolume: (volume: number) => void;
   volume: number;
 };
