@@ -20,11 +20,7 @@ interface FCProps {
 export function ICProfileEdit({ children }: FCProps) {
   return (
     <Sheet>
-      <SheetTrigger asChild>
-        
-        {children}
-
-      </SheetTrigger>
+      <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Edit profile</SheetTitle>
@@ -37,12 +33,17 @@ export function ICProfileEdit({ children }: FCProps) {
             <Label htmlFor="sheet-demo-name">Name</Label>
             <Input id="sheet-demo-name" defaultValue="Pedro" />
           </div>
-           <div className="grid gap-3">
+          <div className="grid gap-3">
             <Label htmlFor="sheet-demo-name">Surname</Label>
             <Input id="sheet-demo-name" defaultValue="Duarte" />
           </div>
 
-          
+          <div className="grid gap-3">
+            <Label htmlFor="sheet-demo-name">Rozet Seç</Label>
+            <div className="bg-gray-200 h-[200px] w-full border border-black">
+              <div className=""></div>
+            </div>
+          </div>
         </div>
         <SheetFooter>
           <Button type="submit">Save changes</Button>

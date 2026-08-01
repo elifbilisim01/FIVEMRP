@@ -1,11 +1,11 @@
 "use client";
 import Image from "next/image";
-import useStore from "./(stroage)/arkaplan";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import useStore from "../../../(stroage)/arkaplan";
+import React, { useEffect, useRef, useState, use } from "react";
 import AudioPlayer from "react-h5-audio-player";
 import "react-h5-audio-player/lib/styles.css";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Tooltip,
   TooltipContent,
@@ -19,12 +19,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   ArrowLeftIcon,
-  CheckCircle2Icon,
   FileWarning,
   Globe2,
+  LucideGlobeCheck,
   MailWarningIcon,
   MessageCircleWarning,
   Music,
@@ -43,34 +50,99 @@ import {
   UserCog,
   UserRoundPen,
   WallpaperIcon,
-  X,
 } from "lucide-react";
-import { ICProfileEdit } from "./(components)/karakterprofilduzenle";
-import useMusic from "./(stroage)/muzik";
+import { ICProfileEdit } from "../../../(components)/karakterprofilduzenle";
+import useMusic from "../../../(stroage)/muzik";
 import { Label } from "@/components/ui/label";
-import { getDiscordUserId } from "./(islevler)/fonksiyonlar";
-import useHataMesaji from "./(stroage)/uyarimesaji";
-import { useRouter } from "next/navigation";
+import {
+  getDiscordUserId,
+  runSqlCommand,
+} from "../../../(islevler)/fonksiyonlar";
+import { useSearchParams } from "next/navigation";
+import useHataMesaji from "@/app/(stroage)/uyarimesaji";
+import { Spinner } from "@/components/ui/spinner";
+import { URLYEGoreKarakterSunucuBilgileriGetir } from "@/app/(islevler)/sorgular";
+export interface KarakterVerisi {
+  user_id: number;
+  discord_id: string;
+  id: number;
+  sunucu_id: number;
+  karakter_adi: string;
+  karakter_soyadi: string;
+  karakter_rozet: string;
+  karakter_ozellikler: string | null;
+  karakter_pp: {
+    type: "Buffer";
+    data: number[];
+  } | null;
+  sunucu_adi: string;
+  sunucu_aciklamasi: string;
+  sunucu_pp: string | null;
+}
+interface ProfilePageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
 
-export default function Home() {
+type DiscordUserResponse = {
+  success: boolean;
+  data: {
+    id: string;
+    username: string;
+    globalName: string;
+    avatar: string;
+    banner: string;
+  };
+};
+
+export default function Home({ params }: ProfilePageProps) {
   const { wallpaper } = useStore();
+  let router = useRouter();
+  const { setmesaj, setmesajturu, setmesajbaslik } = useHataMesaji();
   const audioPlayerRef = useRef<AudioPlayer>(null);
   const [isFocused, setIsFocused] = useState(false);
-  const {
-    hatamesajibaslik,
-    hatamesaji,
-    setmesaj,
-    setmesajturu,
-    setmesajbaslik,
-  } = useHataMesaji();
-  let router = useRouter();
+  const [discordData, setDiscordData] =
+    React.useState<DiscordUserResponse | null>(null);
+  const [ic, seticData] = React.useState<KarakterVerisi | null>(null);
+  const [isDiscordModalOpen, setIsDiscordModalOpen] = useState(false);
+
+  // 1. Dinamik ID'yi buradan alıyoruz (Örn: 3948509438504)
+  const resolvedParams = use(params);
+  const profileId = resolvedParams.id;
+
+  // 2. Query parametresindeki Server değerini buradan alıyoruz (Örn: PWUC)
+  const searchParams = useSearchParams();
+  const serverName = searchParams.get("Server") || "Bilinmiyor";
+
+  useEffect(() => {
+    async function runsql() {
+      let query = `select * from users where discord_id = '${profileId.toString()}' `;
+      console.log(query);
+      let data = await runSqlCommand(query);
+
+      if (data.data.length === 0) {
+        setmesajbaslik("Geçersiz Aratma");
+        setmesaj(
+          "Profil sahibi sunucuyu sistemden silmiş olabilir yada sitemize daha kaydı gerçekleşmedi.",
+        );
+        setmesajturu("danger");
+        router.push("/");
+      } else {
+        console.log("Veritabanında hesapla eşleşildi :).");
+      }
+      console.log(JSON.stringify(data));
+    }
+
+    runsql();
+  }, []);
+
   const handleLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
     const redirectUri = encodeURIComponent(
       "http://localhost:3000/api/auth/discord/callback",
     );
 
-    // Kullanıcıyı Discord'un yetkilendirme sayfasına yönlendiriyoruz
     const discordUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=identify`;
 
     window.location.href = discordUrl;
@@ -79,13 +151,52 @@ export default function Home() {
   //#region useEffects
 
   useEffect(() => {
-    // 370631807504351232
-
     async function run() {
-      let _data = await getDiscordUserId("370631807504351232");
-      if (_data) {
-        console.log(JSON.stringify(_data));
-      }
+      try {
+        let _data = await getDiscordUserId(profileId.toString());
+        if (_data) {
+          console.log("discord data : ", JSON.stringify(_data));
+          setDiscordData(_data);
+        }
+
+        let ic_data = await runSqlCommand(
+          URLYEGoreKarakterSunucuBilgileriGetir(profileId, serverName),
+        );
+
+        console.log("Ham ic_data:", ic_data);
+
+        if (ic_data) {
+          // Gelen verinin tipine göre güvenli atama yapalım:
+          // Eğer ic_data zaten bir nesne/diziyse JSON.parse patlar.
+          const parsedData =
+            typeof ic_data === "string" ? JSON.parse(ic_data) : ic_data;
+
+          console.log("İşlenmiş veri:", parsedData);
+
+
+
+          // Eğer veri doğrudan bir dizi veya { data: [...] } şeklinde geliyorsa:
+          const karakterBilgisi = Array.isArray(parsedData)
+            ? parsedData[0]
+            : parsedData.data?.[0];
+
+          if (karakterBilgisi) {
+            seticData(karakterBilgisi);
+          }
+
+
+          if(parsedData.data.length === 0 ){
+            setmesaj("Bu profil ilgili sunucuda değil veya sistemde kaydı gerçekleşmemiş.")
+            setmesajbaslik("Hata mesajı.")
+            setmesajturu("danger")
+            router.push("/")
+          }
+
+
+        } else {
+          console.log("ic data : ", JSON.stringify(ic_data));
+        }
+      } catch {}
     }
 
     run();
@@ -202,7 +313,6 @@ export default function Home() {
       let playerRef = audioPlayerRef.current as AudioPlayer;
       let audioDom = playerRef.audio.current as HTMLAudioElement;
       if (audioDom) {
-        // 0-100 arasındaki değeri 0-1 arasına dönüştürüyoruz
         audioDom.volume = Math.max(0, Math.min(100, volume)) / 100;
       }
     }
@@ -215,7 +325,6 @@ export default function Home() {
           <TooltipContent side="left">
             <p>Arkaplanı Ayarla</p>
           </TooltipContent>
-          {/* TooltipTrigger'ı Button'a değil, etrafını saran span'e veriyoruz */}
           <TooltipTrigger asChild>
             <span>
               <ICProfileEdit>
@@ -241,7 +350,6 @@ export default function Home() {
           <TooltipContent side="left">
             <p>Karakteri Düzenle</p>
           </TooltipContent>
-          {/* TooltipTrigger'ı Button'a değil, etrafını saran span'e veriyoruz */}
           <TooltipTrigger asChild>
             <span>
               <ICProfileEdit>
@@ -257,9 +365,10 @@ export default function Home() {
       <div className="fixed flex flex-col gap-4 z-2 right-[11px] bottom-4">
         <Tooltip>
           <TooltipContent side="left">
+
             <p>Discord ile giriş yap</p>
+            
           </TooltipContent>
-          {/* TooltipTrigger'ı Button'a değil, etrafını saran span'e veriyoruz */}
           <TooltipTrigger asChild>
             <span>
               <Button
@@ -286,39 +395,137 @@ export default function Home() {
         </Tooltip>
       </div>
 
-      <div className="fixed flex flex-col gap-4 z-2 left-[12px] top-4">
+      <div className="fixed flex flex-col gap-1.5 z-2 left-[12px] top-4">
         <Tooltip>
           <TooltipContent side="left">
-            <p>Discord ile giriş yap</p>
+            <p>Discord Bilgilerini Gör</p>
           </TooltipContent>
-          {/* TooltipTrigger'ı Button'a değil, etrafını saran span'e veriyoruz */}
           <TooltipTrigger asChild>
-            <span>
-              <ICProfileEdit>
-                <Button variant="default" className="rounded-full  ">
-                  <svg
-                    viewBox="0 0 127.14 96.36"
-                    width="300%"
-                    height="300%"
-                    className=" "
-                    xmlns="http://w3.org"
-                  >
-                    <path
-                      fill="#5865F2"
-                      d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.79,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.81,11.1,105.25,105.25,0,0,0,32.22-16.15c2.62-27.28-4.48-51.2-21.15-75.14ZM42.45,65.69C36.18,65.69,31,60,31,53s5.18-12.71,11.45-12.71S53.9,46,53.88,53,48.71,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.18-12.71,11.44-12.71S96.15,46,96.13,53,90.95,65.69,84.69,65.69Z"
-                    />
-                  </svg>
+            <span className="w-fit">
+              <Button
+                variant="default"
+                size={"lg"}
+                className="rounded-full pl-0 cursor-pointer gap-0"
+                onClick={() => setIsDiscordModalOpen(true)}
+              >
+                {discordData?.data?.avatar ? (
+                  <Image
+                    alt="Profile Picture"
+                    width={32}
+                    height={32}
+                    src={discordData.data.avatar}
+                    className="rounded-full"
+                  />
+                ) : null}
 
-                  <span>
-                    <span className="p-0 m-0 text-[#739373]!">@</span>
-                    <span className="p-0 m-0 text-[#737373]!">EhilX</span>
+                <span className="w-fit flex items-center px-2">
+                  <span className="p-0 m-0 text-[#739373]!">@</span>
+                  <span className="p-0 m-0 text-[#737373]!">
+                    {discordData ? (
+                      discordData?.data?.username + "."
+                    ) : (
+                      <Spinner />
+                    )}
                   </span>
-                </Button>
-              </ICProfileEdit>
+                </span>
+              </Button>
+            </span>
+          </TooltipTrigger>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipContent side="right">
+            <p>Sunuculara Karakterini Ekle</p>
+          </TooltipContent>
+          <TooltipTrigger asChild>
+            <span className="w-fit">
+              <Button variant="outline" size="icon" className="rounded-full">
+                <LucideGlobeCheck size={30} />
+              </Button>
             </span>
           </TooltipTrigger>
         </Tooltip>
       </div>
+
+      {/* DISCORD BİLGİLERİ MODALI */}
+      <Dialog open={isDiscordModalOpen} onOpenChange={setIsDiscordModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white text-black">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <svg
+                viewBox="0 0 127.14 96.36"
+                width="24px"
+                height="24px"
+                xmlns="http://w3.org"
+              >
+                <path
+                  fill="#5865F2"
+                  d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.79,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.81,11.1,105.25,105.25,0,0,0,32.22-16.15c2.62-27.28-4.48-51.2-21.15-75.14ZM42.45,65.69C36.18,65.69,31,60,31,53s5.18-12.71,11.45-12.71S53.9,46,53.88,53,48.71,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.18-12.71,11.44-12.71S96.15,46,96.13,53,90.95,65.69,84.69,65.69Z"
+                />
+              </svg>
+              Discord Kullanıcı Bilgileri
+            </DialogTitle>
+            <DialogDescription>
+              Sistemde kayıtlı olan Discord profil detayları aşağıdadır.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center gap-4 pt-0">
+            <div className="relative w-full flex flex-col items-center ">
+              {/* Banner Bölümü */}
+              {discordData?.data?.banner ? (
+                <Image
+                  alt="Banner"
+                  width={600}
+                  height={200}
+                  src={discordData.data.banner}
+                  className="w-full h-32 object-cover rounded-sm"
+                />
+              ) : (
+                /* Banner yoksa şık bir düz renk veya boş alan arkaplanı */
+                <div className="w-full h-32 bg-[#5865F2]/20 rounded-t-xl" />
+              )}
+
+              {/* Avatar Bölümü (Tam Ortada ve Sınırda) */}
+              {discordData?.data?.avatar ? (
+                <Image
+                  alt="Avatar"
+                  width={100}
+                  height={100}
+                  src={discordData.data.avatar}
+                  className=" rounded-full border-4 border-white dark:border-zinc-900 absolute left-1/2 -translate-x-1/2 top-4 object-cover shadow-lg"
+                />
+              ) : (
+                <div className="absolute left-1/2 -translate-x-1/2 top-16">
+                  <Spinner />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col w-full gap-2 text-sm">
+              <div className="flex justify-between border-b pb-2">
+                <span className="font-semibold text-gray-500">
+                  Kullanıcı Adı:
+                </span>
+                <span className="font-mono">
+                  {discordData?.data?.globalName || <Spinner />}
+                </span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="font-semibold text-gray-500">Hesap Adı:</span>
+                <span className="font-mono">
+                  {discordData?.data?.username || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between pb-2">
+                <span className="font-semibold text-gray-500">Discord ID:</span>
+                <span className="font-mono">
+                  {discordData?.data?.id || profileId}
+                </span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="min-h-[calc(100vh-220px)] w-screen flex flex-col items-center justify-center">
         <Card className="relative w-[430px] gap-1 overflow-hidden bg-white/95 backdrop-blur-sm ">
@@ -349,31 +556,8 @@ export default function Home() {
                 </h2>
               </div>
 
-              {hatamesaji ? (
-                <Alert variant={"default"} className="my-4">
-                  <TriangleAlert className="mt-0.5" size={12} />
-                  <AlertTitle className="flex justify-between items-center">
-                    {hatamesajibaslik}{" "}
-                    <Button variant={"secondary"} size={"icon-xs"}  onClick={() => {
-                          setmesaj("");
-                          setmesajturu("");
-                          setmesajbaslik("");
-                        }}>
-                      {" "}
-                      <X
-                       
-                      />
-                    </Button>
-                  </AlertTitle>
-                  <AlertDescription>{hatamesaji}</AlertDescription>
-                </Alert>
-              ) : (
-                <></>
-              )}
-
               <div className="flex flex-col gap-[10px] mb-3">
                 <div className="flex justify-center items-center bg-[#f2eeeecc] py-4 px-2 rounded-xl border-[#dbdbdba6] border-4">
-                  {/* Görsel boyutları optimize edildi */}
                   <Image
                     alt="Photo"
                     width={350}
@@ -390,7 +574,14 @@ export default function Home() {
                       IC :
                     </Button>{" "}
                     <Button variant={"outline"} className="rounded-none">
-                      Pedro Duarte <StarCheck fill="yellow" />
+                      {ic ? (
+                        <>
+                          {ic.karakter_adi} {ic.karakter_soyadi}{" "}
+                          <StarCheck fill="yellow" />
+                        </>
+                      ) : (
+                        <Spinner />
+                      )}
                     </Button>
                   </div>
                   <h3 className="font-bold text-sm font-bold flex gap-1 items-center">
@@ -398,7 +589,7 @@ export default function Home() {
                       Server :
                     </Button>{" "}
                     <Button variant={"outline"} className="rounded-none">
-                      PWUC <Server fill="white" />
+                      {ic?.sunucu_adi || <Spinner/>} <Server fill="white" />
                     </Button>
                   </h3>
 
@@ -435,11 +626,37 @@ export default function Home() {
               <SkipForward className="size-4" />
             </Button>
           </CardFooter>
-
-          {/* BorderBeam süresi artırılarak GPU yükü düşürüldü */}
         </Card>
       </div>
+
       {/* 🎵 AUDIO PLAYER */}
+      <div className="min-h-[12%] fixed bottom-[50px] flex flex-col w-full items-center">
+        <div className="w-full max-w-[90%] md:max-w-[60%]">
+          <AudioPlayer
+            ref={audioPlayerRef}
+            autoPlay
+            src={"/sounds/" + musicName + "." + uzanti}
+          />
+          <div className="text-center text-white/60 text-xs mt-6 select-none flex gap-3 justify-center">
+            <div>
+              <kbd className="px-2 py-1 mr-1 bg-white/10 rounded">Space</kbd>{" "}
+              Play/Pause •
+            </div>
+            <div>
+              <kbd className="px-2 py-1 mr-1 bg-white/10 rounded ml-1">← →</kbd>{" "}
+              5s •
+            </div>
+            <div>
+              <kbd className="px-2 py-1 mr-1 bg-white/10 rounded ml-1">↑ ↓</kbd>{" "}
+              Volume •
+            </div>
+            <div>
+              <kbd className="px-2 py-1 mr-1 bg-white/10 rounded ml-1">M</kbd>{" "}
+              Mute
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
