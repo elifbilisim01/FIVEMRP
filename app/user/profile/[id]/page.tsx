@@ -145,7 +145,7 @@ export default function Home({ params }: ProfilePageProps) {
 useEffect(() => {
     if (ic?.karakter_pp) {
       // Artık burası veri geldiği an çalışacaktır
-      alert(JSON.stringify(ic.karakter_pp)); 
+    //  alert(JSON.stringify(ic.karakter_pp)); 
       
       const formattedUrl = formatProfilePhoto(ic.karakter_pp);
       setProfilePhotoUrl(formattedUrl);
@@ -154,7 +154,7 @@ useEffect(() => {
 
   useEffect(() => {
 
-    alert(profilePhotoUrl)
+  //  alert(profilePhotoUrl)
   }, [profilePhotoUrl])
 
   useEffect(() => {
