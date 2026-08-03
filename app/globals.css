@@ -142,14 +142,15 @@
   }
 }
 
-/* Sayfanın tamamında imleci gizle */
+
+
+/* 
 body,
 html {
   cursor: none !important;
 }
 
-/* İnteraktif olabilecek tüm elementlerin de varsayılan
-   tarayıcı imlecini kullanmasını engelle, yani none yap. */
+ 
 a,
 button,
 input,
@@ -158,10 +159,10 @@ select,
 label[for],
 [role="button"],
 [class*=rhap],.magic-ui-element-class {
-  /* İmleçle etkileşime giren Magic UI sınıfın varsa buraya ekle */
+
   cursor: none !important;
 }
-
+*/
 
 @keyframes snowfall {
   0% {
@@ -207,3 +208,28 @@ label[for],
 .snowflake:nth-child(4) { left: 88%; width: 4px; height: 4px; animation-duration: 14s; animation-delay: 0.9s; }
 .snowflake:nth-child(5) { left: 95%; width: 6px; height: 6px; animation-duration: 7s;  animation-delay: 4.5s; }
 
+
+
+/* Genel Sayfa İmleci */
+body {
+  cursor: url('/imlec_paketi/normal.cur'), auto !important;
+}
+
+/* Tıklanabilir Alanlar (Butonlar, Linkler) */
+a, button, [role="button"] {
+  cursor: url('/imlec_paketi/attack.cur'), pointer !important;
+}
+
+/* Metin Alanları (Input, Textarea) için doğru kullanım */
+input, textarea {
+  cursor: url('/imlec_paketi/focus.cur'), text !important;
+}
+
+/* Linkler için doğru kullanım */
+a {
+  cursor: url('/imlec_paketi/link.cur'), pointer !important;
+}
+/* Yasaklı / Engellenmiş Alanlar */
+:disabled, .not-allowed {
+  cursor: url('/imlec_paketi/invalid.cur'), not-allowed  !important;
+}

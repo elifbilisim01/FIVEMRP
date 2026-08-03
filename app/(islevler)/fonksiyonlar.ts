@@ -1,9 +1,12 @@
 import crypto from "crypto";
 
 const algorithm = "aes-256-cbc";
-const secretKey = crypto.createHash("sha256").update(process.env.DISCORD_CLIENT_SECRET || "gizli-anahtar").digest();
+const secretKey = crypto
+  .createHash("sha256")
+  .update(process.env.DISCORD_CLIENT_SECRET || "gizli-anahtar")
+  .digest();
 
-export  async function runSqlCommand(SqlCommand: string, parameter?: []) {
+export async function runSqlCommand(SqlCommand: string, parameter?: any[]) {
   /*
     
 örnek kod 
@@ -31,25 +34,21 @@ export  async function runSqlCommand(SqlCommand: string, parameter?: []) {
 
 export async function getDiscordUserId(discord_user_id: string) {
   try {
-    const res = await fetch(`/api/getDiscordUserInfo?discordId=${discord_user_id}`);
-    
+    const res = await fetch(
+      `/api/getDiscordUserInfo?discordId=${discord_user_id}`,
+    );
+
     if (!res.ok) {
       throw new Error("API isteği başarısız oldu.");
     }
 
     const result = await res.json();
     return result;
-
   } catch (error) {
     console.error("Discord veri çekme hatası:", error);
     return { success: false, error: "Sunucuya ulaşılamadı." };
   }
 }
-
-
-
-
-
 
 // Şifrelenmiş çerezi çözmek için yardımcı fonksiyon
 function decrypt(encryptedText: string) {
@@ -65,3 +64,15 @@ function decrypt(encryptedText: string) {
     return null; // Şifre çözülemezse veya düz metinse null döner
   }
 }
+
+/*
+
+export interface Icon_Rank {
+  icon_id: number;
+  icon_baslik: string;
+  icon_aciklama: string;
+  icon_dosyayolu: string;
+}
+
+
+*/

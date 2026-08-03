@@ -61,7 +61,10 @@ import {
 import { useSearchParams } from "next/navigation";
 import useHataMesaji from "@/app/(stroage)/uyarimesaji";
 import { Spinner } from "@/components/ui/spinner";
-import { URLYEGoreKarakterSunucuBilgileriGetir } from "@/app/(islevler)/sorgular";
+import {
+  SunucuIconlarinigetir,
+  URLYEGoreKarakterSunucuBilgileriGetir,
+} from "@/app/(islevler)/sorgular";
 export interface KarakterVerisi {
   user_id: number;
   discord_id: string;
@@ -71,10 +74,7 @@ export interface KarakterVerisi {
   karakter_soyadi: string;
   karakter_rozet: string;
   karakter_ozellikler: string | null;
-  karakter_pp: {
-    type: "Buffer";
-    data: number[];
-  } | null;
+  karakter_pp: any; // Burayı 'any' veya genişletilmiş tip yapmak veri tip uyuşmazlıklarını önler
   sunucu_adi: string;
   sunucu_aciklamasi: string;
   sunucu_pp: string | null;
@@ -96,6 +96,13 @@ type DiscordUserResponse = {
   };
 };
 
+export interface Icon_Rank {
+  icon_id: number;
+  icon_baslik: string;
+  icon_aciklama: string;
+  icon_dosyayolu: string;
+}
+
 export default function Home({ params }: ProfilePageProps) {
   const { wallpaper } = useStore();
   let router = useRouter();
@@ -106,6 +113,9 @@ export default function Home({ params }: ProfilePageProps) {
     React.useState<DiscordUserResponse | null>(null);
   const [ic, seticData] = React.useState<KarakterVerisi | null>(null);
   const [isDiscordModalOpen, setIsDiscordModalOpen] = useState(false);
+  const { musicName, volume, setmusic, uzanti } = useMusic();
+  const [Icon_Rank, setIcon_Rank] = React.useState<Icon_Rank[] | null>(null);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
 
   // 1. Dinamik ID'yi buradan alıyoruz (Örn: 3948509438504)
   const resolvedParams = use(params);
@@ -115,6 +125,119 @@ export default function Home({ params }: ProfilePageProps) {
   const searchParams = useSearchParams();
   const serverName = searchParams.get("Server") || "Bilinmiyor";
 
+  //#region fonksiyonlar
+
+  const handleLogin = () => {
+    const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+    const redirectUri = encodeURIComponent(
+      "http://localhost:3000/api/auth/discord/callback",
+    );
+
+    const discordUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=identify`;
+
+    window.location.href = discordUrl;
+  };
+
+  //#endregion
+
+  //#region useEffects
+
+useEffect(() => {
+    if (ic?.karakter_pp) {
+      // Artık burası veri geldiği an çalışacaktır
+      alert(JSON.stringify(ic.karakter_pp)); 
+      
+      const formattedUrl = formatProfilePhoto(ic.karakter_pp);
+      setProfilePhotoUrl(formattedUrl);
+    }
+  }, [ic?.karakter_pp]);
+
+  useEffect(() => {
+
+    alert(profilePhotoUrl)
+  }, [profilePhotoUrl])
+
+  useEffect(() => {
+    if (audioPlayerRef.current) {
+      let playerRef = audioPlayerRef.current as AudioPlayer;
+      let audioDom = playerRef.audio.current as HTMLAudioElement;
+      if (audioDom) {
+        audioDom.volume = Math.max(0, Math.min(100, volume)) / 100;
+      }
+    }
+  }, [volume]);
+  function formatProfilePhoto(pp: any): string {
+    if (!pp) return "";
+
+    try {
+      // Zaten data URL formatındaysa
+      if (typeof pp === "string" && pp.startsWith("data:image")) {
+        // İç içe geçmiş data URL hatalarını temizle
+        if (pp.includes("data:image/webp;base64,data:image")) {
+          const cleanBase64 = pp.split(",").pop();
+          return `data:image/webp;base64,${cleanBase64}`;
+        }
+        return pp;
+      }
+
+      let base64Data = "";
+
+      // Eğer string olarak geldiyse
+      if (typeof pp === "string") {
+        const base64Clean = pp.includes(",") ? pp.split(",")[1] : pp;
+
+        try {
+          const decoded = atob(base64Clean);
+          if (decoded.startsWith("data:image")) {
+            return decoded;
+          }
+        } catch (e) {
+          // Normal base64, devam et
+        }
+
+        base64Data = base64Clean;
+      } else {
+        // Bytea / Buffer / Uint8Array formatındakiler için
+        let rawValues: number[] = [];
+
+        if (pp instanceof Uint8Array) {
+          rawValues = Array.from(pp);
+        } else if (Array.isArray(pp)) {
+          rawValues = pp;
+        } else if (typeof pp === "object" && pp !== null) {
+          rawValues = Array.isArray(pp.data) ? pp.data : Object.values(pp);
+        }
+
+        if (rawValues.length === 0) {
+          return "";
+        }
+
+        const safeUint8 = new Uint8Array(rawValues);
+        let binary = "";
+        const chunkSize = 8192;
+
+        for (let i = 0; i < safeUint8.length; i += chunkSize) {
+          const chunk = safeUint8.subarray(i, i + chunkSize);
+          binary += String.fromCharCode.apply(null, Array.from(chunk));
+        }
+
+        base64Data = btoa(binary);
+      }
+
+      // Eski data:image kalıntılarını kontrol et
+      if (base64Data.startsWith("ZGF0YTppbWFnZS")) {
+        const fullyDecoded = atob(base64Data);
+        if (fullyDecoded.startsWith("data:image")) {
+          return fullyDecoded;
+        }
+      }
+
+      return `data:image/webp;base64,${base64Data}`;
+    } catch (e) {
+      console.error("❌ Fotoğraf dönüştürme hatası:", e);
+      return "";
+    }
+  }
   useEffect(() => {
     async function runsql() {
       let query = `select * from users where discord_id = '${profileId.toString()}' `;
@@ -137,19 +260,6 @@ export default function Home({ params }: ProfilePageProps) {
     runsql();
   }, []);
 
-  const handleLogin = () => {
-    const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-    const redirectUri = encodeURIComponent(
-      "http://localhost:3000/api/auth/discord/callback",
-    );
-
-    const discordUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=identify`;
-
-    window.location.href = discordUrl;
-  };
-
-  //#region useEffects
-
   useEffect(() => {
     async function run() {
       try {
@@ -166,16 +276,9 @@ export default function Home({ params }: ProfilePageProps) {
         console.log("Ham ic_data:", ic_data);
 
         if (ic_data) {
-          // Gelen verinin tipine göre güvenli atama yapalım:
-          // Eğer ic_data zaten bir nesne/diziyse JSON.parse patlar.
           const parsedData =
             typeof ic_data === "string" ? JSON.parse(ic_data) : ic_data;
 
-          console.log("İşlenmiş veri:", parsedData);
-
-
-
-          // Eğer veri doğrudan bir dizi veya { data: [...] } şeklinde geliyorsa:
           const karakterBilgisi = Array.isArray(parsedData)
             ? parsedData[0]
             : parsedData.data?.[0];
@@ -184,15 +287,18 @@ export default function Home({ params }: ProfilePageProps) {
             seticData(karakterBilgisi);
           }
 
+          let icon_rank_data = await runSqlCommand(SunucuIconlarinigetir());
 
-          if(parsedData.data.length === 0 ){
-            setmesaj("Bu profil ilgili sunucuda değil veya sistemde kaydı gerçekleşmemiş.")
-            setmesajbaslik("Hata mesajı.")
-            setmesajturu("danger")
-            router.push("/")
+          setIcon_Rank(icon_rank_data);
+
+          if (parsedData.data.length === 0) {
+            setmesaj(
+              "Bu profil ilgili sunucuda değil veya sistemde kaydı gerçekleşmemiş.",
+            );
+            setmesajbaslik("Hata mesajı.");
+            setmesajturu("danger");
+            router.push("/");
           }
-
-
         } else {
           console.log("ic data : ", JSON.stringify(ic_data));
         }
@@ -306,18 +412,6 @@ export default function Home({ params }: ProfilePageProps) {
   }, [wallpaper]);
   //#endregion
 
-  const { musicName, volume, setmusic, uzanti } = useMusic();
-
-  useEffect(() => {
-    if (audioPlayerRef.current) {
-      let playerRef = audioPlayerRef.current as AudioPlayer;
-      let audioDom = playerRef.audio.current as HTMLAudioElement;
-      if (audioDom) {
-        audioDom.volume = Math.max(0, Math.min(100, volume)) / 100;
-      }
-    }
-  }, [volume]);
-
   return (
     <main className="overflow-hidden fixed z-1">
       <div className="fixed flex flex-col gap-4 z-2 right-[11px] top-4">
@@ -327,11 +421,9 @@ export default function Home({ params }: ProfilePageProps) {
           </TooltipContent>
           <TooltipTrigger asChild>
             <span>
-              <ICProfileEdit>
-                <Button variant="outline" size="icon" className="rounded-full">
-                  <SlidersVertical className="size-4" />
-                </Button>
-              </ICProfileEdit>
+              <Button variant="outline" size="icon" className="rounded-full">
+                <SlidersVertical className="size-4" />
+              </Button>
             </span>
           </TooltipTrigger>
         </Tooltip>
@@ -352,7 +444,7 @@ export default function Home({ params }: ProfilePageProps) {
           </TooltipContent>
           <TooltipTrigger asChild>
             <span>
-              <ICProfileEdit>
+              <ICProfileEdit data={ic} allRanks={Icon_Rank || []}>
                 <Button variant="outline" size="icon" className="rounded-full">
                   <UserRoundPen className="size-4" />
                 </Button>
@@ -365,9 +457,7 @@ export default function Home({ params }: ProfilePageProps) {
       <div className="fixed flex flex-col gap-4 z-2 right-[11px] bottom-4">
         <Tooltip>
           <TooltipContent side="left">
-
             <p>Discord ile giriş yap</p>
-            
           </TooltipContent>
           <TooltipTrigger asChild>
             <span>
@@ -528,7 +618,7 @@ export default function Home({ params }: ProfilePageProps) {
       </Dialog>
 
       <div className="min-h-[calc(100vh-220px)] w-screen flex flex-col items-center justify-center">
-        <Card className="relative w-[430px] gap-1 overflow-hidden bg-white/95 backdrop-blur-sm ">
+        <Card className="relative w-[370px] md:w-[430px] gap-1 overflow-hidden bg-white/95 backdrop-blur-sm ">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               IC Inspect Screen{" "}
@@ -545,27 +635,31 @@ export default function Home({ params }: ProfilePageProps) {
 
                 <h2 className="font-semibold font-mono flex items-center gap-1">
                   <div className="">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="rounded-full items-center justify-center flex pl-[2.5px]"
-                    >
-                      <TriangleAlert className="size-4 " />
-                    </Button>
+                   
                   </div>
                 </h2>
               </div>
 
               <div className="flex flex-col gap-[10px] mb-3">
                 <div className="flex justify-center items-center bg-[#f2eeeecc] py-4 px-2 rounded-xl border-[#dbdbdba6] border-4">
-                  <Image
-                    alt="Photo"
-                    width={350}
-                    height={200}
-                    priority
-                    className="rounded-xl object-cover h-[200px] w-[350px]"
-                    src={"/cpp/12.avif"}
-                  />
+                  {profilePhotoUrl ? (
+                    <img
+                      alt="Photo"
+                      width={350}
+                      height={200}
+                      
+                      className="rounded-xl object-cover h-[200px] w-[350px]"
+                      src={profilePhotoUrl}
+                    />
+                  ) : (
+                    <img
+                      alt="Photo"
+                      width={350}
+                      height={200}
+                      className="rounded-xl object-cover h-[200px] w-[350px]"
+                      src={"yok"}
+                    />
+                  )}
                 </div>
 
                 <div className="flex flex-col w-full gap-1">
@@ -589,7 +683,7 @@ export default function Home({ params }: ProfilePageProps) {
                       Server :
                     </Button>{" "}
                     <Button variant={"outline"} className="rounded-none">
-                      {ic?.sunucu_adi || <Spinner/>} <Server fill="white" />
+                      {ic?.sunucu_adi || <Spinner />} <Server fill="white" />
                     </Button>
                   </h3>
 

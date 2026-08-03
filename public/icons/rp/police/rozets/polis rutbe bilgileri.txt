@@ -1,0 +1,26 @@
+FiveM rol yapma (RP) sunucularında polis birimleri (genellikle **LSPD** - Los Santos Police Department, **BCSO** - Blaine County Sheriff Office, veya eyalet çaplı **SASP / SAHP**) gerçek Amerikan kolluk kuvvetleri hiyerarşisi örnek alınarak yapılandırılır.
+
+Sunucudan sunucuya küçük isim değişiklikleri gösterse de, genel olarak polis rütbeleri en alttan en üste doğru şu şekilde sıralanır:
+
+### 1. Eğitim / Aday Rütbeleri
+
+* **Cadet (Kademet / Stajyer Polis):** Departmana yeni katılan, teorik ve pratik eğitimleri alırken henüz sahaya tek başına çıkamayan en alt basamaktaki adaydır.
+* **Solo Cadet:** Temel eğitimlerini tamamlamış, belirli denetimler altında sahada tek başına veya gözetmen eşliğinde devriye atmaya başlayan kıdemli stajyerdir.
+
+### 2. Memur Rütbeleri (Officers / Troopers)
+
+* **Officer I (Memur I):** Akademiyi başarıyla bitirip resmi olarak polis unvanı alan ilk kademe memurdur.
+* **Officer II (Memur II):** Temel sahil/sokak deneyimini kazanmış, taktiksel sürüş ve silah eğitimlerinde pişmiş standart devriye memurudur.
+* **Officer III / Senior Officer (Kıdemli Memur):** Kendini kanıtlamış, birim içinde (örneğin FTO - Eğitim Memuru, K9 veya HSU - Yüksek Hız Birimi gibi) ek uzmanlıklar alabilen deneyimli memurdur.
+
+### 3. Kıdemli / Uzman Memur Rütbeleri
+
+* **Corporal (Kondüktör / Onbaşı):** Alt rütbedeki memurlara rehberlik eden, sahadaki düzeni ve eğitimleri denetleyen alt kademe liderdir.
+* **Sergeant (Çavuş):** Sahayı yöneten, ekipleri olay yerlerine yönlendiren, raporları inceleyen ve denetim yapan ilk resmi yönetim (komuta) basamağıdır. Sunucuya göre *Senior Sergeant (Kıdemli Çavuş)* gibi ara rütbeleri de olabilir.
+
+### 4. Üst Yönetim Rütbeleri (High Command)
+
+* **Lieutenant (Teğmen):** Çavuşlar ile kaptanlar arasında köprü olan, departmanın belirli operasyonel planlarını ve bürolarını yöneten üst rütbedir.
+* **Captain (Yüzbaşı):** Departmanın ana departmanlarının (örneğin Devriye Bürosu, Dedektiflik Bürosu vb.) başında yer alan yüksek yetkili komutandır.
+* **Assistant Chief (Emniyet Müdür Yardımcısı):** Departman liderinin sağ kolu olup tüm kurumun idari işleyişinde büyük söz sahibidir.
+* **Chief of Police / Sheriff (Emniyet Müdürü / Şerif):** Departmanın en tepe noktasındaki lideridir. Tüm kurumun kurallarından, yönetiminden ve dış ilişkilerinden sorumlu en yetkili oyuncudur.

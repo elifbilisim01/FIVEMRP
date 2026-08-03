@@ -43,7 +43,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.className} min-h-full animate__animated animate__fadeIn `}
         >
-          <Pointer className="z-999999" />
+        
 
           <div className="fixed inset-0 w-screen h-screen overflow-hidden pointer-events-none -z-1">
             <div className="snowflake"></div>
@@ -58,3 +58,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+/*  <Pointer className="z-999999" />*/
