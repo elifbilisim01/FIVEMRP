@@ -554,10 +554,10 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
   // ==================================================
 
   return (
-    <Sheet>
-      <SheetTrigger asChild>{children}</SheetTrigger>
+    <Sheet >
+      <SheetTrigger  asChild>{children}</SheetTrigger>
 
-      <SheetContent className="overflow-y-auto">
+      <SheetContent  className="overflow-y-auto ">
         <SheetHeader>
           <SheetTitle>Karakteri Düzenle</SheetTitle>
 
@@ -921,6 +921,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
                   </Button>
 
                   <Button
+                  variant={"outline"}
                     onClick={handleCropAndSave}
                     disabled={!imageSrc && !croppedImageBytes}
                   >

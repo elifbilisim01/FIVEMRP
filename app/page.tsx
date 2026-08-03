@@ -324,7 +324,7 @@ export default function Home() {
         <Card className="relative w-[430px] gap-1 overflow-hidden bg-white/95 backdrop-blur-sm ">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              IC Inspect Screen{" "}
+              Giriş Yapın{" "}
             </CardTitle>
             <CardDescription>{musicName}</CardDescription>
           </CardHeader>
@@ -405,12 +405,12 @@ export default function Home() {
                   <div className="flex flex-col items-start gap-1">
                     <Button
                       variant={"outline"}
-                      className="rounded-none font-semibold uppercase  w-full"
+                      className="rounded-none font-semibold uppercase brightness-110  w-full"
                     >
                       Karakter Özellikleri
                       <User />
                     </Button>{" "}
-                    <Button variant={"outline"} className="rounded-none w-full">
+                    <Button variant={"outline"} className="rounded-none  w-full">
                       Sunucuya Katıl
                     </Button>{" "}
                   </div>

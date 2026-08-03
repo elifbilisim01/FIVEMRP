@@ -142,20 +142,23 @@ export default function Home({ params }: ProfilePageProps) {
 
   //#region useEffects
 
-useEffect(() => {
+  useEffect(() => {
     if (ic?.karakter_pp) {
       // Artık burası veri geldiği an çalışacaktır
-    //  alert(JSON.stringify(ic.karakter_pp)); 
-      
+      //  alert(JSON.stringify(ic.karakter_pp));
+
       const formattedUrl = formatProfilePhoto(ic.karakter_pp);
       setProfilePhotoUrl(formattedUrl);
     }
   }, [ic?.karakter_pp]);
 
   useEffect(() => {
+    audioPlayerRef.current?.audio.current.play();
+  }, []);
 
-  //  alert(profilePhotoUrl)
-  }, [profilePhotoUrl])
+  useEffect(() => {
+    //  alert(profilePhotoUrl)
+  }, [profilePhotoUrl]);
 
   useEffect(() => {
     if (audioPlayerRef.current) {
@@ -618,7 +621,7 @@ useEffect(() => {
       </Dialog>
 
       <div className="min-h-[calc(100vh-220px)] w-screen flex flex-col items-center justify-center">
-        <Card className="relative w-[370px] md:w-[430px] gap-1 overflow-hidden bg-white/95 backdrop-blur-sm ">
+        <Card className="relative w-[370px] md:w-[430px]  gap-1 overflow-hidden bg-white/95 backdrop-blur-sm ">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               IC Inspect Screen{" "}
@@ -634,31 +637,37 @@ useEffect(() => {
                 </button>
 
                 <h2 className="font-semibold font-mono flex items-center gap-1">
-                  <div className="">
-                   
-                  </div>
+                  <div className=""></div>
                 </h2>
               </div>
 
               <div className="flex flex-col gap-[10px] mb-3">
                 <div className="flex justify-center items-center bg-[#f2eeeecc] py-4 px-2 rounded-xl border-[#dbdbdba6] border-4">
-                  {profilePhotoUrl ? (
-                    <img
+                  {ic === null ? (
+                    // Veritabanından veri henüz gelmediyse yükleniyor (Spinner) göster
+                    <div className="flex flex-col items-center h-full gap-2">
+                      <div className="flex flex-col items-center">
+                        <Spinner />
+                        <span className="text-xs text-zinc-500">
+                          Yükleniyor...
+                        </span>
+                      </div>
+                    </div>
+                  ) : profilePhotoUrl ? (
+                    // Fotoğraf varsa göster
+                    <Image
                       alt="Photo"
                       width={350}
                       height={200}
-                      
                       className="rounded-xl object-cover h-[200px] w-[350px]"
                       src={profilePhotoUrl}
                     />
                   ) : (
-                    <img
-                      alt="Photo"
-                      width={350}
-                      height={200}
-                      className="rounded-xl object-cover h-[200px] w-[350px]"
-                      src={"yok"}
-                    />
+                    // Veri geldi ama fotoğraf alanı boşsa (null ise) gösterilecek fallback
+                    <div className="flex flex-col items-center gap-2 text-zinc-400">
+                      <User className="size-10 opacity-40" />
+                      <span className="text-xs">Fotoğraf Bulunamadı</span>
+                    </div>
                   )}
                 </div>
 
