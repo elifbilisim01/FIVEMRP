@@ -31,6 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
 import { runSqlCommand } from "../(islevler)/fonksiyonlar";
+import { AlertTriangle, User } from "lucide-react";
 
 interface FCProps {
   children: ReactNode;
@@ -61,6 +62,16 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
   const [_surname, _setSurname] = React.useState<
     string | number | readonly string[] | undefined
   >(undefined);
+
+  const [fotografDegistirildi, setFotografDegistirildi] =
+    React.useState<boolean>(false);
+
+  const [resimDegistirildimi, setResimDegistirildimi] =
+    React.useState<boolean>(false);
+
+  const sheetTriggerkarakterduzenle = React.useRef<HTMLButtonElement | null>(
+    null,
+  );
 
   // --------------------------------------------------
   // Kullanıcı Bilgileri
@@ -127,13 +138,25 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
   // --------------------------------------------------
 
   async function sendDBChangesHandle() {
-    const sql =
-      `UPDATE public."ICBilgisi" SET karakter_adi = $1, karakter_soyadi = $2, icon_id = $3, karakter_pp = $4 WHERE user_id = ` +
-      data.user_id +
-      ` and sunucu_id = ` +
-      data.sunucu_id;
+    let sql = null;
+     let params = null ;
+    if (fotografDegistirildi) {
+      params = [_username, _surname, iconId, croppedImageBytes];
+      sql =
+        `UPDATE public."ICBilgisi" SET karakter_adi = $1, karakter_soyadi = $2, icon_id = $3, karakter_pp = $4 WHERE user_id = ` +
+        data.user_id +
+        ` and sunucu_id = ` +
+        data.sunucu_id;
+    } else {
+       params = [_username, _surname, iconId];
+      sql =
+        `UPDATE public."ICBilgisi" SET karakter_adi = $1, karakter_soyadi = $2, icon_id = $3 WHERE user_id = ` +
+        data.user_id +
+        ` and sunucu_id = ` +
+        data.sunucu_id;
+    }
 
-    const params = [_username, _surname, iconId, croppedImageBytes];
+   
 
     await runSqlCommand(sql, params);
   }
@@ -302,6 +325,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
     };
 
     reader.readAsDataURL(file);
+    setResimDegistirildimi(true);
   };
 
   // ==================================================
@@ -518,6 +542,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
     setProfilePhotoUrl(webpDataUrl);
 
     setAvatarOpen(false);
+    setFotografDegistirildi(true);
   };
 
   // ==================================================
@@ -554,10 +579,12 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
   // ==================================================
 
   return (
-    <Sheet >
-      <SheetTrigger  asChild>{children}</SheetTrigger>
+    <Sheet>
+      <SheetTrigger ref={sheetTriggerkarakterduzenle} asChild>
+        {children}
+      </SheetTrigger>
 
-      <SheetContent  className="overflow-y-auto ">
+      <SheetContent className="overflow-y-auto ">
         <SheetHeader>
           <SheetTitle>Karakteri Düzenle</SheetTitle>
 
@@ -580,7 +607,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
             <Label htmlFor="sheet-demo-name">Name</Label>
 
             <Input
-              defaultValue={_username}
+              value={_username}
               onChange={(e) => _setUsername(e.currentTarget.value.toString())}
             />
           </div>
@@ -593,7 +620,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
             <Label htmlFor="sheet-demo-name">Surname</Label>
 
             <Input
-              defaultValue={_surname}
+              value={_surname}
               onChange={(e) => _setSurname(e.currentTarget.value.toString())}
             />
           </div>
@@ -601,7 +628,6 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
             {/* ==================================================
               STATÜ DÜZENLEME
           ================================================== */}
-
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">Statü Düzenle</Button>
@@ -620,7 +646,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
                 <div className="flex flex-col md:flex-row gap-5">
                   {/* SEÇİLEN STATÜ */}
 
-                  <div className="flex flex-col items-center justify-between md:w-[250px] h-fit rounded-md gap-3">
+                  <div className="flex flex-col items-center justify-between md:w-[250px] h-full pb-4 rounded-md gap-1.5">
                     <div className="border border-slate-200 bg-slate-50 p-4 md:p-4 md:pt-2 gap-1 w-full md:min-w-[192px] h-fit flex flex-col items-center">
                       <span className="text-sm font-medium text-slate-600">
                         Seçilen Statü
@@ -650,28 +676,37 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
                       )}
                     </div>
 
-                    <div className="w-full flex-col gap-2 hidden md:flex">
+                    <div className="w-full flex-col gap-0.5 hidden md:flex">
                       <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setOpen(false)}
+                        variant="ghost"
+                        className="px-0! mx-0! justify-start"
                       >
-                        Seç
+                        Durum :
+                        {iconId === data?.icon_id ? (
+                          <span className="text-green-700">Seçildi </span>
+                        ) : (
+                          <span className="text-red-700">Kaydedilmedi</span>
+                        )}
                       </Button>
+                      <div className="w-full flex-col gap-2 hidden md:flex">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => setOpen(false)}
+                        >
+                          Seç
+                        </Button>
 
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => {
-                          setOpen(false);
-
-                          setTimeout(() => {
-                            setIconId(data.icon_id);
-                          }, 1000);
-                        }}
-                      >
-                        İptal
-                      </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setOpen(false);
+                          }}
+                        >
+                          Kapat
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -785,11 +820,9 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
                 </div>
               </DialogContent>
             </Dialog>
-
             {/* ==================================================
               PROFİL FOTOĞRAFI DÜZENLE
           ================================================== */}
-
             <Dialog open={avatarOpen} onOpenChange={setAvatarOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">Profil Fotoğrafı Düzenle</Button>
@@ -851,11 +884,12 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
                         />
                       </div>
                     ) : (
-                      <img
-                        src={profilePhotoUrl || "/wallpapers/2.avif"}
-                        alt="Mevcut Profil"
-                        className="w-full h-full object-cover"
-                      />
+                              <div className="flex flex-col items-center justify-center gap-2 text-zinc-400 py-6">
+                  <User className="size-8 opacity-50" />
+                  <span className="text-xs">Fotoğraf Seç</span>
+                </div>
+                      
+                      
                     )}
                   </div>
 
@@ -912,21 +946,54 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
                   BUTONLAR
               ================================================== */}
 
-                <div className="flex gap-2 justify-end mt-2">
+                <div className=" flex items-center justify-between">
                   <Button
+                    disabled={
+                      imageSrc === null || data.karakter_pp === imageSrc
+                    }
                     variant="outline"
-                    onClick={() => setAvatarOpen(false)}
-                  >
-                    İptal
-                  </Button>
+                    onClick={async () => {
+                      // 1. State'leri orijinal 'data' prop'undaki değerlerine geri döndür
 
-                  <Button
-                  variant={"outline"}
-                    onClick={handleCropAndSave}
-                    disabled={!imageSrc && !croppedImageBytes}
+                      const originalPhoto = formatProfilePhoto(
+                        data?.karakter_pp,
+                      );
+
+                      setProfilePhotoUrl(originalPhoto);
+                      setCroppedImageBytes(data?.karakter_pp || null);
+
+                      setImageSrc(null);
+                      setImageObj(null);
+                      setZoom(1);
+                      setPosition({ x: 0, y: 0 });
+
+                      // 2. İsteğe bağlı olarak dialogları kapatabilirsin
+
+                      setFotografDegistirildi(false);
+                      setResimDegistirildimi(false);
+                    }}
                   >
-                    Uygula
+                    Eski hale getir
                   </Button>
+                  <div className="flex gap-2 justify-end mt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setAvatarOpen(false);
+                        setFotografDegistirildi(false);
+                      }}
+                    >
+                      İptal
+                    </Button>
+
+                    <Button
+                      variant={"outline"}
+                      onClick={handleCropAndSave}
+                      disabled={!imageSrc}
+                    >
+                      Uygula
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -946,6 +1013,30 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
             }}
           >
             Değişikliği Kaydet
+          </Button>
+          <Button
+            variant={"outline"}
+            onClick={() => {
+              // 1. State'leri orijinal 'data' prop'undaki değerlerine geri döndür
+              _setUsername(data?.karakter_adi ?? "");
+              _setSurname(data?.karakter_soyadi ?? "");
+              setIconId(data?.icon_id ?? null);
+
+              const originalPhoto = formatProfilePhoto(data?.karakter_pp);
+              setProfilePhotoUrl(originalPhoto);
+              setCroppedImageBytes(data?.karakter_pp || null);
+
+              setImageSrc(null);
+              setImageObj(null);
+              setZoom(1);
+              setPosition({ x: 0, y: 0 });
+
+              // 2. İsteğe bağlı olarak dialogları kapatabilirsin
+              setAvatarOpen(false);
+              setFotografDegistirildi(false);
+            }}
+          >
+            Varsayılan ayarlara dön
           </Button>
 
           <SheetClose asChild>

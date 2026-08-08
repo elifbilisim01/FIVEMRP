@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Roboto } from "next/font/google";
+import { Geist, Geist_Mono, Roboto , Playball } from "next/font/google";
 import { Pointer } from "@/components/ui/pointer";
 import "./globals.css";
 import "animate.css";
@@ -9,6 +9,14 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
+
+
+const playballfont = Playball({
+  weight: "400", // 👈 Eklenmesi gereken zorunlu alan
+  subsets: ["latin"], // 👈 Fontun düzgün yüklenmesi için tavsiye edilir
+  variable: "--font-playball",
+});
+
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -36,7 +44,7 @@ export default function RootLayout({
     <html
       lang="en"
       // 2. roboto.variable değerini html className alanına ekliyoruz
-      className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} ${playballfont.variable} h-full antialiased`}
     >
       <TooltipProvider>
         {/* 3. Fontu body üzerinde sınıf olarak çağırıyoruz */}

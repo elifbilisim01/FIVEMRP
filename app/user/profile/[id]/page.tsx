@@ -35,6 +35,8 @@ import {
   MailWarningIcon,
   MessageCircleWarning,
   Music,
+  Music2,
+  Notebook,
   PersonStandingIcon,
   PlayIcon,
   Search,
@@ -65,6 +67,8 @@ import {
   SunucuIconlarinigetir,
   URLYEGoreKarakterSunucuBilgileriGetir,
 } from "@/app/(islevler)/sorgular";
+import { MusicSelectorModal } from "@/app/(components)/profilmuzikduzenle";
+import { WallpaperModal } from "@/app/(components)/WallpaperModal";
 export interface KarakterVerisi {
   user_id: number;
   discord_id: string;
@@ -74,10 +78,16 @@ export interface KarakterVerisi {
   karakter_soyadi: string;
   karakter_rozet: string;
   karakter_ozellikler: string | null;
-  karakter_pp: any; // Burayı 'any' veya genişletilmiş tip yapmak veri tip uyuşmazlıklarını önler
+  karakter_pp: any;
   sunucu_adi: string;
   sunucu_aciklamasi: string;
   sunucu_pp: string | null;
+  icon_baslik: string;
+  icon_aciklama: string;
+  icon_dosyayolu: string;
+  secilen_muzik: string; // Örn: "Concrete_Alibi" veya "Beton_Labirent.mp3"
+  paket: string; // Örn: "Concrete_Alibi" veya "Beton_Labirent.mp3"
+  secilen_arkaplan : string;
 }
 interface ProfilePageProps {
   params: Promise<{
@@ -104,7 +114,7 @@ export interface Icon_Rank {
 }
 
 export default function Home({ params }: ProfilePageProps) {
-  const { wallpaper } = useStore();
+  const { wallpaper ,setwallpaper } = useStore();
   let router = useRouter();
   const { setmesaj, setmesajturu, setmesajbaslik } = useHataMesaji();
   const audioPlayerRef = useRef<AudioPlayer>(null);
@@ -140,7 +150,20 @@ export default function Home({ params }: ProfilePageProps) {
 
   //#endregion
 
+
+
+
   //#region useEffects
+
+
+   useEffect(() => {
+    if (ic?.secilen_arkaplan) {
+
+       setwallpaper(ic.secilen_arkaplan)
+     
+    }
+  }, [ic?.secilen_arkaplan]);
+
 
   useEffect(() => {
     if (ic?.karakter_pp) {
@@ -152,9 +175,14 @@ export default function Home({ params }: ProfilePageProps) {
     }
   }, [ic?.karakter_pp]);
 
+  // YENİ HALİ
   useEffect(() => {
-    audioPlayerRef.current?.audio.current.play();
-  }, []);
+    if (musicName && musicName.trim() !== "") {
+      audioPlayerRef.current?.audio.current.play().catch((err) => {
+        console.log("Oynatma engellendi veya hata oluştu:", err);
+      });
+    }
+  }, [musicName]); // musicName değiştiğinde de tetiklenmesi için bağımlılığa eklendi
 
   useEffect(() => {
     //  alert(profilePhotoUrl)
@@ -418,24 +446,27 @@ export default function Home({ params }: ProfilePageProps) {
   return (
     <main className="overflow-hidden fixed z-1">
       <div className="fixed flex flex-col gap-4 z-2 right-[11px] top-4">
-        <Tooltip>
-          <TooltipContent side="left">
-            <p>Arkaplanı Ayarla</p>
-          </TooltipContent>
-          <TooltipTrigger asChild>
-            <span>
-              <Button variant="outline" size="icon" className="rounded-full">
-                <SlidersVertical className="size-4" />
-              </Button>
-            </span>
-          </TooltipTrigger>
-        </Tooltip>
+      
+  {ic?.id && (
+  <Tooltip>
+    <TooltipContent side="left">
+      <p>Arkaplanı Ayarla</p>
+    </TooltipContent>
+    <TooltipTrigger asChild>
+      <span>
+        <WallpaperModal karakterId={ic.id}>
+          <Button variant="outline" size="icon" className="rounded-full">
+            <SlidersVertical className="size-4" />
+          </Button>
+        </WallpaperModal>
+      </span>
+    </TooltipTrigger>
+  </Tooltip>
+)}
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" className="rounded-full ">
-              <Music className="size-4" />
-            </Button>
+            <span>{ic ? <MusicSelectorModal data={ic} /> : ""}</span>
           </TooltipTrigger>
           <TooltipContent side="left">
             <p>Müziği Ayarla</p>
@@ -576,7 +607,7 @@ export default function Home({ params }: ProfilePageProps) {
                 />
               ) : (
                 /* Banner yoksa şık bir düz renk veya boş alan arkaplanı */
-                <div className="w-full h-32 bg-[#5865F2]/20 rounded-t-xl" />
+                <div className="w-full h-32 bg-black/90 rounded-t-xl" />
               )}
 
               {/* Avatar Bölümü (Tam Ortada ve Sınırda) */}
@@ -620,113 +651,191 @@ export default function Home({ params }: ProfilePageProps) {
         </DialogContent>
       </Dialog>
 
-      <div className="min-h-[calc(100vh-220px)] w-screen flex flex-col items-center justify-center">
-        <Card className="relative w-[370px] md:w-[430px]  gap-1 overflow-hidden bg-white/95 backdrop-blur-sm ">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              IC Inspect Screen{" "}
-            </CardTitle>
-            <CardDescription>{musicName}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-2xl text-black w-full p-4  pb-0 mb-0! px-1 pt-0">
-              <div className="title mb-2 border-b pb-1 flex items-center justify-between">
-                <button className="flex items-center gap-1 duration-300 hover:pl-1 pl-0 hover:bg-[#d8d8d8b2] px-2 py-[6px] rounded-sm">
-                  <ArrowLeftIcon size={15} />
-                  <span className="font-mono leading-0">Geri</span>
-                </button>
-
-                <h2 className="font-semibold font-mono flex items-center gap-1">
-                  <div className=""></div>
-                </h2>
+      <div className="min-h-[calc(100vh-200px)] w-screen flex flex-col items-center justify-center">
+        <Card className="relative w-[370px] md:w-[430px] rounded-2xl shadow-xl border border-zinc-200/80 bg-white/90 pt-0! overflow-hidden transition-all duration-300">
+          {/* Üst Başlık Alanı */}
+          <CardHeader className="pt-4 gap-1 pb-0 border-b border-zinc-100 bg-white/95">
+            <div className="flex items-center  justify-between">
+              <CardTitle className="text-xl  tracking-tight font-playball! font-thin  text-zinc-900">
+                IC Inspect Screen
+              </CardTitle>
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200/60">
+                {ic?.paket.trimStart().substring(0,1).toLocaleUpperCase() }{ic?.paket.trimStart().substring(1).toLocaleLowerCase()}
+              </span>
+            </div>
+            <CardDescription className="text-xs text-zinc-500 mt-0.5 truncate ">
+              <div className="flex gap-1.5  justify-start">
+                {musicName}
+                <Music2 size={15} />
               </div>
+            </CardDescription>
+          </CardHeader>
 
-              <div className="flex flex-col gap-[10px] mb-3">
-                <div className="flex justify-center items-center bg-[#f2eeeecc] py-4 px-2 rounded-xl border-[#dbdbdba6] border-4">
-                  {ic === null ? (
-                    // Veritabanından veri henüz gelmediyse yükleniyor (Spinner) göster
-                    <div className="flex flex-col items-center h-full gap-2">
-                      <div className="flex flex-col items-center">
-                        <Spinner />
-                        <span className="text-xs text-zinc-500">
-                          Yükleniyor...
-                        </span>
-                      </div>
-                    </div>
-                  ) : profilePhotoUrl ? (
-                    // Fotoğraf varsa göster
-                    <Image
-                      alt="Photo"
-                      width={350}
-                      height={200}
-                      className="rounded-xl object-cover h-[200px] w-[350px]"
-                      src={profilePhotoUrl}
-                    />
+          {/* İçerik Alanı */}
+          <CardContent className=" pt-0 space-y-4">
+            {/* Geri Butonu ve Başlık Navigasyonu */}
+            <div className="flex items-center justify-between">
+              <button className="group flex items-center gap-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 bg-zinc-100/80 hover:bg-zinc-200/70 px-3 py-1.5 rounded-lg transition-all">
+                <ArrowLeftIcon
+                  size={14}
+                  className="transition-transform group-hover:-translate-x-0.5"
+                />
+                <span>Geri</span>
+              </button>
+              <button className="group flex items-center gap-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 bg-zinc-100/80 hover:bg-zinc-200/70 px-3 py-1.5 rounded-lg transition-all">
+                <span>Report</span>
+                <TriangleAlert
+                  size={14}
+                  className="transition-transform group-hover:-translate-x-0.5"
+                />
+              </button>
+            </div>
+
+            {/* Fotoğraf / Medya Alanı */}
+            <div className="relative flex justify-center items-center bg-zinc-900 p-2 rounded-xl overflow-hidden shadow-inner aspect-[16/9]">
+              {ic === null ? (
+                <div className="flex flex-col items-center justify-center h-full gap-2 py-6">
+                  <Spinner />
+                  <span className="text-xs text-zinc-400 font-medium">
+                    Yükleniyor...
+                  </span>
+                </div>
+              ) : profilePhotoUrl ? (
+                <Image
+                  alt="Karakter Fotoğrafı"
+                  width={350}
+                  height={200}
+                  className="rounded-lg object-cover h-full p-1.5 w-full"
+                  src={profilePhotoUrl}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 text-zinc-400 py-6">
+                  <User className="size-8 opacity-50" />
+                  <span className="text-xs">Fotoğraf Bulunamadı</span>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-center w-full">
+              <hr className=" bg-black w-[calc(100%-40px)]!   h-0.5 opacity-25"></hr>
+            </div>
+            {/* Bilgi Kartları Grubu */}
+            <div className="grid grid-cols-2 gap-2.5 gap-y-2.5 mb-2.5 ">
+              {/* IC Bilgisi */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/60">
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  ISIM
+                </span>
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-800 truncate">
+                  {ic ? (
+                    <>
+                      <span className="truncate">{ic.karakter_adi}</span>
+                      <StarCheck fill="yellow" className="size-3.5 shrink-0" />
+                    </>
                   ) : (
-                    // Veri geldi ama fotoğraf alanı boşsa (null ise) gösterilecek fallback
-                    <div className="flex flex-col items-center gap-2 text-zinc-400">
-                      <User className="size-10 opacity-40" />
-                      <span className="text-xs">Fotoğraf Bulunamadı</span>
-                    </div>
+                    <Spinner />
                   )}
                 </div>
+              </div>
 
-                <div className="flex flex-col w-full gap-1">
-                  <div className="font-bold flex gap-1 items-center">
-                    <Button variant={"outline"} className="rounded-none">
-                      IC :
-                    </Button>{" "}
-                    <Button variant={"outline"} className="rounded-none">
-                      {ic ? (
-                        <>
-                          {ic.karakter_adi} {ic.karakter_soyadi}{" "}
-                          <StarCheck fill="yellow" />
-                        </>
-                      ) : (
-                        <Spinner />
-                      )}
-                    </Button>
-                  </div>
-                  <h3 className="font-bold text-sm font-bold flex gap-1 items-center">
-                    <Button variant={"outline"} className="rounded-none">
-                      Server :
-                    </Button>{" "}
-                    <Button variant={"outline"} className="rounded-none">
-                      {ic?.sunucu_adi || <Spinner />} <Server fill="white" />
-                    </Button>
-                  </h3>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/60">
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Soyisim
+                </span>
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-800 truncate">
+                  {ic ? (
+                    <>
+                      <span className="truncate">{ic.karakter_soyadi}</span>
+                      <StarCheck fill="yellow" className="size-3.5 shrink-0" />
+                    </>
+                  ) : (
+                    <Spinner />
+                  )}
+                </div>
+              </div>
 
-                  <div className="flex flex-col items-start gap-1">
-                    <Button
-                      variant={"outline"}
-                      className="rounded-none font-semibold uppercase  w-full"
-                    >
-                      Karakter Özellikleri
-                      <User />
-                    </Button>{" "}
-                    <Button variant={"outline"} className="rounded-none w-full">
-                      Sunucuya Katıl
-                    </Button>{" "}
-                  </div>
+              {/* Server Bilgisi */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/60">
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Server
+                </span>
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-800 truncate">
+                  {ic?.sunucu_adi ? (
+                    <span className="truncate">{ic.sunucu_adi}</span>
+                  ) : (
+                    <Spinner />
+                  )}
+                  <Server className="size-3.5 text-zinc-600 shrink-0" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/60">
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Rütbe
+                </span>
+                <div className="flex items-center gap-1.5 font-semibold text-xs  text-zinc-800 truncate">
+                  {ic ? (
+                    <>
+                      <span className="truncate w-20 overflow-clip">
+                        {ic?.icon_baslik}
+                      </span>
+                    </>
+                  ) : (
+                    <Spinner />
+                  )}
+
+                  {ic?.icon_dosyayolu ? (
+                    <img
+                      src={ic?.icon_dosyayolu.substring(1) || ""}
+                      alt="rutbe"
+                      className="size-4 rounded-sm text-zinc-600 shrink-0"
+                      width={500}
+                      height={500}
+                    />
+                  ) : (
+                    <TriangleAlert className="size-3.5 text-zinc-600 shrink-0" />
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Aksiyon Butonları */}
+            <div className="flex flex-col gap-2 pt-1">
+              <button className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200/80 transition-all border border-zinc-200/60">
+                Sunucuya Katıl
+                <Server className="size-4" />
+              </button>
+            </div>
           </CardContent>
-          <CardFooter className="flex justify-center gap-4">
-            <Button variant="outline" size="icon" className="rounded-full">
-              <Globe2 className="size-4" />
-            </Button>
+
+          {/* Alt Footer ve Müzik Kontrolleri */}
+          <CardFooter className="flex justify-center items-center gap-2.5 pt-4 pb-4 border-t border-zinc-100 bg-zinc-50/50">
+            {/* Hikaye Butonu */}
             <Button
-              size="icon"
-              className="rounded-full"
+              variant="outline"
+              className="rounded-full px-4 h-10 text-xs font-medium gap-2 border-zinc-200 bg-white hover:bg-zinc-100/80 hover:text-zinc-900 transition-all shadow-xs"
               onClick={() => {
                 setmusic("GTA V OST Extended Welcome to Los Santos", "m4a");
               }}
             >
-              <PlayIcon className="size-4" />
+              <Notebook className="size-4 text-zinc-500" />
+              <span>Hikaye</span>
             </Button>
-            <Button variant="outline" size="icon" className="rounded-full">
-              <SkipForward className="size-4" />
+
+            {/* Sunucular Butonu (Vurgulu/Ana Buton Yapıldı) */}
+            <Button className="rounded-full px-5 h-10 text-xs font-medium gap-2 bg-zinc-900 text-white hover:bg-zinc-800 transition-all shadow-sm">
+              <Globe2 className="size-4 text-zinc-300" />
+              <span>Sunucular</span>
+            </Button>
+
+            {/* Kimlik Butonu */}
+            <Button
+              variant="outline"
+              className="rounded-full px-4 h-10 text-xs font-medium gap-2 border-zinc-200 bg-white hover:bg-zinc-100/80 hover:text-zinc-900 transition-all shadow-xs"
+              onClick={() => {
+                setmusic("GTA V OST Extended Welcome to Los Santos", "m4a");
+              }}
+            >
+              <User className="size-4 text-zinc-500" />
+              <span>Kimlik</span>
             </Button>
           </CardFooter>
         </Card>
@@ -738,7 +847,7 @@ export default function Home({ params }: ProfilePageProps) {
           <AudioPlayer
             ref={audioPlayerRef}
             autoPlay
-            src={"/sounds/" + musicName + "." + uzanti}
+            src={`/sounds/${musicName}.${uzanti}`}
           />
           <div className="text-center text-white/60 text-xs mt-6 select-none flex gap-3 justify-center">
             <div>

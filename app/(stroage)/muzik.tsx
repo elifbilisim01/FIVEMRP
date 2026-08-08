@@ -9,7 +9,7 @@ type Store = {
 };
 
 const useMusic = create<Store>()((set) => ({
-  musicName: "Grippy - Concrete Teeth",
+  musicName: "",
   uzanti: "mp3",
   setmusic: (_musicname: string , type : string) => {
     set({ musicName: _musicname , uzanti : type});
