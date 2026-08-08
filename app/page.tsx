@@ -89,6 +89,8 @@ export default function Home() {
     }
 
     run();
+
+    router.push("/user/profile/485187508808843275?Server=PWUC")
   }, []);
 
   // Sağ tık engeli
