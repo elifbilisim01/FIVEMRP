@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 
-// FiveM renk kodlarını (^1, ^2, ^3 vs.) temizleyen yardımcı fonksiyon
+// FiveM renk kodlarını (^1, (^2, ^3 vs.) temizleyen yardımcı fonksiyon
 function cleanFiveMColorCodes(str: string = ""): string {
   if (!str) return "";
   return str.replace(/\^\d/g, "").trim();
@@ -28,7 +28,13 @@ export async function GET(request: Request) {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+      ],
     });
 
     const page = await browser.newPage();
@@ -89,7 +95,6 @@ export async function GET(request: Request) {
       // 3. Doğru Sunucu Açıklamasını Yakalama (Project Description)
       let description = "";
 
-      // Yöntem A: Sayfadaki React/Angular State veya JSON Script Bloğunu Taramak
       const scripts = Array.from(document.querySelectorAll('script'));
       for (const script of scripts) {
         const content = script.textContent || "";
@@ -103,9 +108,7 @@ export async function GET(request: Request) {
         }
       }
 
-      // Yöntem B: Gerçek DOM Alanlarından Çekme (Jenerik meta metinlerini filtreleyerek)
       if (!description) {
-        // FiveM detay sayfasında sunucu künyesinin yazıldığı HTML alanları
         const targetElements = Array.from(
           document.querySelectorAll("p, span, div")
         );
@@ -113,7 +116,6 @@ export async function GET(request: Request) {
         for (const el of targetElements) {
           const text = el.textContent?.trim() || "";
           
-          // Sitenin kendi statik metinlerini ve jenerik ifadelerini ele
           const isGenericText = 
             text.includes("Browse thousands of servers") ||
             text.includes("FiveM is a modification") ||
@@ -122,7 +124,6 @@ export async function GET(request: Request) {
             text === rawHostname;
 
           if (text.length > 2 && !isGenericText) {
-            // Sunucu açıklamalarında genelde Discord, Yüksek FPS, Whitelist vb. ifadeler yer alır
             if (
               text.toLowerCase().includes("discord") ||
               text.toLowerCase().includes("fps") ||
@@ -186,7 +187,7 @@ export async function GET(request: Request) {
           `https://frontend.cfx-services.net/api/servers/icon/${id}/-543792002.png`,
         vars: {
           sv_projectName: cleanName,
-          sv_projectDesc: cleanDescription, // Gerçek sunucu açıklaması (Örn: Discord.GG/PWUC Yüksek FPS [TR])
+          sv_projectDesc: cleanDescription,
         },
       },
     });
