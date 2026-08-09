@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import puppeteerCore from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import chromium from "@sparticuz/chromium-min";
 import path from "path";
 import os from "os";
 import fs from "fs";
@@ -32,18 +32,18 @@ export async function GET(request: Request) {
     const isVercel = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION;
 
     if (isVercel) {
-      // Vercel / Serverless Ortamı
       chromium.setHeadlessMode = true;
       chromium.setGraphicsMode = false;
 
       browser = await puppeteerCore.launch({
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
+        executablePath: await chromium.executablePath(
+          "https://github.com/Sparticuz/chromium/releases/download/v132.0.0/chromium-v132.0.0-pack.tar"
+        ),
         headless: chromium.headless,
       });
     } else {
-      // Localhost Ortamı (Bilgisayarındaki indirilen Chrome'u kullanır)
       let chromeExecutablePath = path.join(
         process.cwd(),
         ".cache",

@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Sparticuz ve puppeteer-core paketlerini dışarıda tut
+  serverExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
+  
+  // Vercel build alırken chromium binary dosyalarının da fonksiyona kopyalanmasını sağlar
+  outputFileTracingIncludes: {
+    "/api/fivem": ["./node_modules/@sparticuz/chromium-min/bin/**/*"],
+  },
+
   async rewrites() {
     return [
       {
