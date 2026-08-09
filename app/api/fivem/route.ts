@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer";
+import path from "path";
+import os from "os";
 
 // FiveM renk kodlarını (^1, ^2, ^3 vs.) temizleyen yardımcı fonksiyon
 function cleanFiveMColorCodes(str: string = ""): string {
@@ -26,11 +28,21 @@ export async function GET(request: Request) {
   let browser = null;
 
   try {
-    // Puppeteer başlatma ayarları (Sistem Chrome'unu otomatik algılar veya varsayılanı dener)
+    // Bilgisayarınızda az önce indirilen Chrome'un tam yolu
+    // (Eğer başka bir sürüm indiyse klasör adındaki versiyon numarasını kontrol edebilirsiniz)
+    const chromeExecutablePath = path.join(
+      os.homedir(),
+      ".cache",
+      "puppeteer",
+      "chrome",
+      "win64-151.0.7922.71",
+      "chrome-win64",
+      "chrome.exe"
+    );
+
     browser = await puppeteer.launch({
       headless: true,
-      // Eğer sisteminizde özel bir Chrome yolu varsa buraya yazabilirsiniz:
-      // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
+      executablePath: chromeExecutablePath, // Doğrudan Chrome'un yerini gösteriyoruz
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
