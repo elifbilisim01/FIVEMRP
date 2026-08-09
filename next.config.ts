@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/fivem-api/:path*",
+        destination: "https://servers-frontend.fivem.net/api/:path*",
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

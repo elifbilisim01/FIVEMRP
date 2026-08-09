@@ -1,0 +1,202 @@
+import { NextResponse } from "next/server";
+import puppeteer from "puppeteer";
+
+// FiveM renk kodlarını (^1, ^2, ^3 vs.) temizleyen yardımcı fonksiyon
+function cleanFiveMColorCodes(str: string = ""): string {
+  if (!str) return "";
+  return str.replace(/\^\d/g, "").trim();
+}
+
+interface FiveMScrapeResult {
+  rawHostname?: string;
+  clients?: number;
+  sv_maxclients?: number;
+  icon?: string;
+  description?: string;
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "ID eksik" }, { status: 400 });
+  }
+
+  let browser = null;
+
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+    );
+
+    const detailUrl = `https://servers.fivem.net/servers/detail/${id}`;
+    await page.goto(detailUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
+
+    // Sayfadaki JS render'ı ve canlı verilerin oturması için bekleme
+    await new Promise((r) => setTimeout(r, 3000));
+
+    const extractedData: FiveMScrapeResult | null = await page.evaluate(() => {
+      // 1. Oyuncu Sayısını Çek (Örn: "346 / 700")
+      const bodyText = document.body.innerText;
+      const clientsMatch = bodyText.match(/(\d+)\s*\/\s*(\d+)/);
+      let clients = 0;
+      let sv_maxclients = 0;
+
+      if (clientsMatch) {
+        clients = parseInt(clientsMatch[1], 10);
+        sv_maxclients = parseInt(clientsMatch[2], 10);
+      }
+
+      // 2. Sunucu İsmini Yakalama
+      let rawHostname = "";
+      const selectors = [
+        "h1",
+        "h2",
+        "[class*='serverName']",
+        "[class*='hostname']",
+        "[class*='title']",
+        "header div",
+      ];
+
+      for (const selector of selectors) {
+        const elements = Array.from(document.querySelectorAll(selector));
+        for (const el of elements) {
+          const text = el.textContent?.trim() || "";
+          if (
+            text.length > 3 &&
+            !text.includes("Server List") &&
+            !text.includes("FiveM Server") &&
+            !text.includes("Connect")
+          ) {
+            rawHostname = text;
+            break;
+          }
+        }
+        if (rawHostname) break;
+      }
+
+      if (!rawHostname) {
+        rawHostname = document.title || "";
+      }
+
+      // 3. Doğru Sunucu Açıklamasını Yakalama (Project Description)
+      let description = "";
+
+      // Yöntem A: Sayfadaki React/Angular State veya JSON Script Bloğunu Taramak
+      const scripts = Array.from(document.querySelectorAll('script'));
+      for (const script of scripts) {
+        const content = script.textContent || "";
+        if (content.includes("sv_projectDesc") || content.includes("projectDesc")) {
+          const match = content.match(/"sv_projectDesc"\s*:\s*"([^"]+)"/) || 
+                        content.match(/"projectDesc"\s*:\s*"([^"]+)"/);
+          if (match && match[1]) {
+            description = match[1];
+            break;
+          }
+        }
+      }
+
+      // Yöntem B: Gerçek DOM Alanlarından Çekme (Jenerik meta metinlerini filtreleyerek)
+      if (!description) {
+        // FiveM detay sayfasında sunucu künyesinin yazıldığı HTML alanları
+        const targetElements = Array.from(
+          document.querySelectorAll("p, span, div")
+        );
+
+        for (const el of targetElements) {
+          const text = el.textContent?.trim() || "";
+          
+          // Sitenin kendi statik metinlerini ve jenerik ifadelerini ele
+          const isGenericText = 
+            text.includes("Browse thousands of servers") ||
+            text.includes("FiveM is a modification") ||
+            text.includes("Server List") ||
+            text.includes("Connect") ||
+            text === rawHostname;
+
+          if (text.length > 2 && !isGenericText) {
+            // Sunucu açıklamalarında genelde Discord, Yüksek FPS, Whitelist vb. ifadeler yer alır
+            if (
+              text.toLowerCase().includes("discord") ||
+              text.toLowerCase().includes("fps") ||
+              text.toLowerCase().includes("roleplay") ||
+              text.toLowerCase().includes("tr") ||
+              text.toLowerCase().includes("whitelist")
+            ) {
+              description = text;
+              break;
+            }
+          }
+        }
+      }
+
+      // 4. Logo Yakalama
+      const imgElements = Array.from(document.querySelectorAll("img"));
+      let iconUrl: string | undefined = undefined;
+
+      for (const img of imgElements) {
+        if (
+          img.src &&
+          (img.src.includes("cfx-services") || img.src.startsWith("data:image"))
+        ) {
+          iconUrl = img.src;
+          break;
+        }
+      }
+
+      return {
+        rawHostname,
+        clients,
+        sv_maxclients,
+        icon: iconUrl,
+        description,
+      };
+    });
+
+    await browser.close();
+
+    const rawHostname = extractedData?.rawHostname || "";
+    let cleanName = cleanFiveMColorCodes(rawHostname)
+      .replace(/\|.*$/i, "")
+      .replace(/- FiveM.*$/i, "")
+      .replace(/FiveM Server Detail/i, "")
+      .replace(/Server List/i, "")
+      .trim();
+
+    if (!cleanName) {
+      cleanName = "PWUC Roleplay";
+    }
+
+    const cleanDescription = cleanFiveMColorCodes(extractedData?.description || "");
+
+    return NextResponse.json({
+      Data: {
+        hostname: cleanName,
+        clients: extractedData?.clients ?? 0,
+        sv_maxclients: extractedData?.sv_maxclients ?? 0,
+        icon:
+          extractedData?.icon ||
+          `https://frontend.cfx-services.net/api/servers/icon/${id}/-543792002.png`,
+        vars: {
+          sv_projectName: cleanName,
+          sv_projectDesc: cleanDescription, // Gerçek sunucu açıklaması (Örn: Discord.GG/PWUC Yüksek FPS [TR])
+        },
+      },
+    });
+  } catch (error: unknown) {
+    if (browser) await browser.close();
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Puppeteer Hatası:", errorMessage);
+    return NextResponse.json(
+      { error: `Sunucu hatası: ${errorMessage}` },
+      { status: 500 }
+    );
+  }
+}

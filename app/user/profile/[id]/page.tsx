@@ -69,6 +69,7 @@ import {
 } from "@/app/(islevler)/sorgular";
 import { MusicSelectorModal } from "@/app/(components)/profilmuzikduzenle";
 import { WallpaperModal } from "@/app/(components)/WallpaperModal";
+import { SunucularaKarakterEkle } from "@/app/(components)/SunucularaKarakterEkle";
 export interface KarakterVerisi {
   user_id: number;
   discord_id: string;
@@ -87,7 +88,7 @@ export interface KarakterVerisi {
   icon_dosyayolu: string;
   secilen_muzik: string; // Örn: "Concrete_Alibi" veya "Beton_Labirent.mp3"
   paket: string; // Örn: "Concrete_Alibi" veya "Beton_Labirent.mp3"
-  secilen_arkaplan : string;
+  secilen_arkaplan: string;
 }
 interface ProfilePageProps {
   params: Promise<{
@@ -114,7 +115,7 @@ export interface Icon_Rank {
 }
 
 export default function Home({ params }: ProfilePageProps) {
-  const { wallpaper ,setwallpaper } = useStore();
+  const { wallpaper, setwallpaper } = useStore();
   let router = useRouter();
   const { setmesaj, setmesajturu, setmesajbaslik } = useHataMesaji();
   const audioPlayerRef = useRef<AudioPlayer>(null);
@@ -150,20 +151,13 @@ export default function Home({ params }: ProfilePageProps) {
 
   //#endregion
 
-
-
-
   //#region useEffects
 
-
-   useEffect(() => {
+  useEffect(() => {
     if (ic?.secilen_arkaplan) {
-
-       setwallpaper(ic.secilen_arkaplan)
-     
+      setwallpaper(ic.secilen_arkaplan);
     }
   }, [ic?.secilen_arkaplan]);
-
 
   useEffect(() => {
     if (ic?.karakter_pp) {
@@ -446,23 +440,26 @@ export default function Home({ params }: ProfilePageProps) {
   return (
     <main className="overflow-hidden fixed z-1">
       <div className="fixed flex flex-col gap-4 z-2 right-[11px] top-4">
-      
-  {ic?.id && (
-  <Tooltip>
-    <TooltipContent side="left">
-      <p>Arkaplanı Ayarla</p>
-    </TooltipContent>
-    <TooltipTrigger asChild>
-      <span>
-        <WallpaperModal karakterId={ic.id}>
-          <Button variant="outline" size="icon" className="rounded-full">
-            <SlidersVertical className="size-4" />
-          </Button>
-        </WallpaperModal>
-      </span>
-    </TooltipTrigger>
-  </Tooltip>
-)}
+        {ic?.id && (
+          <Tooltip>
+            <TooltipContent side="left">
+              <p>Arkaplanı Ayarla</p>
+            </TooltipContent>
+            <TooltipTrigger asChild>
+              <span>
+                <WallpaperModal karakterId={ic.id}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full"
+                  >
+                    <SlidersVertical className="size-4" />
+                  </Button>
+                </WallpaperModal>
+              </span>
+            </TooltipTrigger>
+          </Tooltip>
+        )}
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -537,6 +534,7 @@ export default function Home({ params }: ProfilePageProps) {
                     alt="Profile Picture"
                     width={32}
                     height={32}
+                    loading="eager"
                     src={discordData.data.avatar}
                     className="rounded-full"
                   />
@@ -563,9 +561,21 @@ export default function Home({ params }: ProfilePageProps) {
           </TooltipContent>
           <TooltipTrigger asChild>
             <span className="w-fit">
-              <Button variant="outline" size="icon" className="rounded-full">
-                <LucideGlobeCheck size={30} />
-              </Button>
+              {ic ? (
+                <SunucularaKarakterEkle karakterId={ic.id}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full"
+                  >
+                    <LucideGlobeCheck size={30} />
+                  </Button>
+                </SunucularaKarakterEkle>
+              ) : (
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Spinner  />
+                </Button>
+              )}
             </span>
           </TooltipTrigger>
         </Tooltip>
@@ -652,7 +662,7 @@ export default function Home({ params }: ProfilePageProps) {
       </Dialog>
 
       <div className="min-h-[calc(100vh-200px)] w-screen flex flex-col items-center justify-center">
-        <Card className="relative w-[370px] md:w-[430px] rounded-2xl shadow-xl border border-zinc-200/80 bg-white/90 pt-0! overflow-hidden transition-all duration-300">
+        <Card className="relative w-[370px] md:w-[430px] rounded-2xl shadow-xl border border-zinc-200/80 bg-white/90 pt-0! overflow-hidden gap-0! transition-all duration-300">
           {/* Üst Başlık Alanı */}
           <CardHeader className="pt-4 gap-1 pb-0 border-b border-zinc-100 bg-white/95">
             <div className="flex items-center  justify-between">
@@ -660,7 +670,8 @@ export default function Home({ params }: ProfilePageProps) {
                 IC Inspect Screen
               </CardTitle>
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200/60">
-                {ic?.paket.trimStart().substring(0,1).toLocaleUpperCase() }{ic?.paket.trimStart().substring(1).toLocaleLowerCase()}
+                {ic?.paket.trimStart().substring(0, 1).toLocaleUpperCase()}
+                {ic?.paket.trimStart().substring(1).toLocaleLowerCase()}
               </span>
             </div>
             <CardDescription className="text-xs text-zinc-500 mt-0.5 truncate ">
@@ -674,23 +685,7 @@ export default function Home({ params }: ProfilePageProps) {
           {/* İçerik Alanı */}
           <CardContent className=" pt-0 space-y-4">
             {/* Geri Butonu ve Başlık Navigasyonu */}
-            <div className="flex items-center justify-between">
-              <button className="group flex items-center gap-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 bg-zinc-100/80 hover:bg-zinc-200/70 px-3 py-1.5 rounded-lg transition-all">
-                <ArrowLeftIcon
-                  size={14}
-                  className="transition-transform group-hover:-translate-x-0.5"
-                />
-                <span>Geri</span>
-              </button>
-              <button className="group flex items-center gap-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 bg-zinc-100/80 hover:bg-zinc-200/70 px-3 py-1.5 rounded-lg transition-all">
-                <span>Report</span>
-                <TriangleAlert
-                  size={14}
-                  className="transition-transform group-hover:-translate-x-0.5"
-                />
-              </button>
-            </div>
-
+          
             {/* Fotoğraf / Medya Alanı */}
             <div className="relative flex justify-center items-center bg-zinc-900 p-2 rounded-xl overflow-hidden shadow-inner aspect-[16/9]">
               {ic === null ? (
@@ -719,7 +714,7 @@ export default function Home({ params }: ProfilePageProps) {
               <hr className=" bg-black w-[calc(100%-40px)]!   h-0.5 opacity-25"></hr>
             </div>
             {/* Bilgi Kartları Grubu */}
-            <div className="grid grid-cols-2 gap-2.5 gap-y-2.5 mb-2.5 ">
+            <div className="grid grid-cols-2 gap-2.5 bg-[#f9f9f9]/40 p-3 rounded-sm py-5 gap-y-2.5 mb-2.5 ">
               {/* IC Bilgisi */}
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/60">
                 <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">

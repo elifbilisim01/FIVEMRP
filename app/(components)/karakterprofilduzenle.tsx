@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
 import { runSqlCommand } from "../(islevler)/fonksiyonlar";
 import { AlertTriangle, User } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 interface FCProps {
   children: ReactNode;
@@ -89,7 +90,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
   // --------------------------------------------------
 
   const [avatarOpen, setAvatarOpen] = useState(false);
-
+  const [loading, setLoading] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   const [croppedImageBytes, setCroppedImageBytes] = useState<string | null>(
@@ -139,7 +140,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
 
   async function sendDBChangesHandle() {
     let sql = null;
-     let params = null ;
+    let params = null;
     if (fotografDegistirildi) {
       params = [_username, _surname, iconId, croppedImageBytes];
       sql =
@@ -148,7 +149,7 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
         ` and sunucu_id = ` +
         data.sunucu_id;
     } else {
-       params = [_username, _surname, iconId];
+      params = [_username, _surname, iconId];
       sql =
         `UPDATE public."ICBilgisi" SET karakter_adi = $1, karakter_soyadi = $2, icon_id = $3 WHERE user_id = ` +
         data.user_id +
@@ -156,9 +157,9 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
         data.sunucu_id;
     }
 
-   
+    let value = await runSqlCommand(sql, params);
 
-    await runSqlCommand(sql, params);
+    return true;
   }
 
   // --------------------------------------------------
@@ -884,12 +885,10 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
                         />
                       </div>
                     ) : (
-                              <div className="flex flex-col items-center justify-center gap-2 text-zinc-400 py-6">
-                  <User className="size-8 opacity-50" />
-                  <span className="text-xs">Fotoğraf Seç</span>
-                </div>
-                      
-                      
+                      <div className="flex flex-col items-center justify-center gap-2 text-zinc-400 py-6">
+                        <User className="size-8 opacity-50" />
+                        <span className="text-xs">Fotoğraf Seç</span>
+                      </div>
                     )}
                   </div>
 
@@ -1007,12 +1006,17 @@ export function ICProfileEdit({ children, data, allRanks }: FCProps) {
         <SheetFooter>
           <Button
             type="submit"
-            onClick={() => {
-              sendDBChangesHandle();
-              location.reload();
+            onClick={async () => {
+              setLoading(true)
+              if (await sendDBChangesHandle()) {
+              
+                location.reload();
+              }else{
+                setLoading(true)
+              }
             }}
           >
-            Değişikliği Kaydet
+            {loading ? (<Spinner/>) : ("Değişikliği Kaydet")}
           </Button>
           <Button
             variant={"outline"}
