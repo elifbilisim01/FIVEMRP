@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import path from "path";
 import os from "os";
+import fs from "fs";
 
 // FiveM renk kodlarını (^1, ^2, ^3 vs.) temizleyen yardımcı fonksiyon
 function cleanFiveMColorCodes(str: string = ""): string {
@@ -28,21 +29,27 @@ export async function GET(request: Request) {
   let browser = null;
 
   try {
-    // Bilgisayarınızda az önce indirilen Chrome'un tam yolu
-    // (Eğer başka bir sürüm indiyse klasör adındaki versiyon numarasını kontrol edebilirsiniz)
-    const chromeExecutablePath = path.join(
-      os.homedir(),
-      ".cache",
-      "puppeteer",
-      "chrome",
-      "win64-151.0.7922.71",
-      "chrome-win64",
-      "chrome.exe"
-    );
+    // İşletim sistemine göre executablePath belirleme
+    let chromeExecutablePath: string | undefined = undefined;
 
-    browser = await puppeteer.launch({
+    if (os.platform() === "win32") {
+      const winPath = path.join(
+        os.homedir(),
+        ".cache",
+        "puppeteer",
+        "chrome",
+        "win64-151.0.7922.71",
+        "chrome-win64",
+        "chrome.exe"
+      );
+      if (fs.existsSync(winPath)) {
+        chromeExecutablePath = winPath;
+      }
+    }
+
+    // Launch konfigürasyonu
+    const launchOptions: any = {
       headless: true,
-      executablePath: chromeExecutablePath, // Doğrudan Chrome'un yerini gösteriyoruz
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -50,7 +57,13 @@ export async function GET(request: Request) {
         "--disable-accelerated-2d-canvas",
         "--disable-gpu",
       ],
-    });
+    };
+
+    if (chromeExecutablePath) {
+      launchOptions.executablePath = chromeExecutablePath;
+    }
+
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     await page.setUserAgent(
