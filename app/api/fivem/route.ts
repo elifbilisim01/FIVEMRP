@@ -4,7 +4,7 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 
-// FiveM renk kodlarını (^1, ^2, ^3 vs.) temizleyen yardımcı fonksiyon
+// FiveM renk kodlarını temizleyen yardımcı fonksiyon
 function cleanFiveMColorCodes(str: string = ""): string {
   if (!str) return "";
   return str.replace(/\^\d/g, "").trim();
@@ -29,11 +29,22 @@ export async function GET(request: Request) {
   let browser = null;
 
   try {
-    // İşletim sistemine göre executablePath belirleme
-    let chromeExecutablePath: string | undefined = undefined;
+    // Senin belirttiğin kesin Chrome executable yolu
+    const customChromePath = path.join(
+      process.cwd(),
+      ".cache",
+      "puppeteer",
+      "chrome",
+      "win64-151.0.7922.71",
+      "chrome-win64",
+      "chrome.exe"
+    );
 
-    if (os.platform() === "win32") {
-      const winPath = path.join(
+    // Eğer proje içinde bulunamazsa alternatif olarak genel Windows yolunu dene
+    let chromeExecutablePath = fs.existsSync(customChromePath) ? customChromePath : undefined;
+
+    if (!chromeExecutablePath && os.platform() === "win32") {
+      const defaultWinPath = path.join(
         os.homedir(),
         ".cache",
         "puppeteer",
@@ -42,12 +53,11 @@ export async function GET(request: Request) {
         "chrome-win64",
         "chrome.exe"
       );
-      if (fs.existsSync(winPath)) {
-        chromeExecutablePath = winPath;
+      if (fs.existsSync(defaultWinPath)) {
+        chromeExecutablePath = defaultWinPath;
       }
     }
 
-    // Launch konfigürasyonu
     const launchOptions: any = {
       headless: true,
       args: [
@@ -77,7 +87,7 @@ export async function GET(request: Request) {
     await new Promise((r) => setTimeout(r, 3000));
 
     const extractedData: FiveMScrapeResult | null = await page.evaluate(() => {
-      // 1. Oyuncu Sayısını Çek (Örn: "346 / 700")
+      // 1. Oyuncu Sayısını Çek
       const bodyText = document.body.innerText;
       const clientsMatch = bodyText.match(/(\d+)\s*\/\s*(\d+)/);
       let clients = 0;
@@ -120,7 +130,7 @@ export async function GET(request: Request) {
         rawHostname = document.title || "";
       }
 
-      // 3. Doğru Sunucu Açıklamasını Yakalama (Project Description)
+      // 3. Doğru Sunucu Açıklamasını Yakalama
       let description = "";
 
       const scripts = Array.from(document.querySelectorAll('script'));
