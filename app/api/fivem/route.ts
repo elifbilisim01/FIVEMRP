@@ -5,6 +5,7 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 
+// FiveM renk kodlarını (^1, ^2, ^3 vs.) temizleyen yardımcı fonksiyon
 function cleanFiveMColorCodes(str: string = ""): string {
   if (!str) return "";
   return str.replace(/\^\d/g, "").trim();
@@ -38,7 +39,9 @@ export async function GET(request: Request) {
       browser = await puppeteerCore.launch({
         args: [
           ...chromium.args,
-          "--disable-blink-features=AutomationControlled", // Bot korumalarını bypass etmek için
+          "--disable-blink-features=AutomationControlled",
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
         ],
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(
@@ -86,23 +89,18 @@ export async function GET(request: Request) {
     }
 
     const page = await browser.newPage();
-    
-    // Cloudflare/Bot engeline takılmamak için gelişmiş tarayıcı kimliği
     await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     );
-    
-    await page.setExtraHTTPHeaders({
-      "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    });
 
     const detailUrl = `https://servers.fivem.net/servers/detail/${id}`;
     await page.goto(detailUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
 
-    await new Promise((r) => setTimeout(r, 3000));
+    // Sayfadaki JS render'ı ve canlı verilerin oturması için bekleme
+    await new Promise((r) => setTimeout(r, 4000));
 
     const extractedData: FiveMScrapeResult | null = await page.evaluate(() => {
+      // 1. Oyuncu Sayısını Çek (Örn: "346 / 700")
       const bodyText = document.body.innerText;
       const clientsMatch = bodyText.match(/(\d+)\s*\/\s*(\d+)/);
       let clients = 0;
@@ -113,6 +111,7 @@ export async function GET(request: Request) {
         sv_maxclients = parseInt(clientsMatch[2], 10);
       }
 
+      // 2. Sunucu İsmini Yakalama
       let rawHostname = "";
       const selectors = [
         "h1",
@@ -131,8 +130,7 @@ export async function GET(request: Request) {
             text.length > 3 &&
             !text.includes("Server List") &&
             !text.includes("FiveM Server") &&
-            !text.includes("Connect") &&
-            !text.includes("Access Denied")
+            !text.includes("Connect")
           ) {
             rawHostname = text;
             break;
@@ -141,17 +139,21 @@ export async function GET(request: Request) {
         if (rawHostname) break;
       }
 
-      if (!rawHostname || rawHostname.includes("Access Denied")) {
+      if (!rawHostname) {
         rawHostname = document.title || "";
       }
 
+      // 3. Doğru Sunucu Açıklamasını Yakalama (Project Description)
       let description = "";
-      const scripts = Array.from(document.querySelectorAll('script'));
+
+      // Yöntem A: Sayfadaki React/Angular State veya JSON Script Bloğunu Taramak
+      const scripts = Array.from(document.querySelectorAll("script"));
       for (const script of scripts) {
         const content = script.textContent || "";
         if (content.includes("sv_projectDesc") || content.includes("projectDesc")) {
-          const match = content.match(/"sv_projectDesc"\s*:\s*"([^"]+)"/) || 
-                        content.match(/"projectDesc"\s*:\s*"([^"]+)"/);
+          const match =
+            content.match(/"sv_projectDesc"\s*:\s*"([^"]+)"/) ||
+            content.match(/"projectDesc"\s*:\s*"([^"]+)"/);
           if (match && match[1]) {
             description = match[1];
             break;
@@ -159,14 +161,16 @@ export async function GET(request: Request) {
         }
       }
 
+      // Yöntem B: Gerçek DOM Alanlarından Çekme (Jenerik metinleri filtreleyerek)
       if (!description) {
         const targetElements = Array.from(
-          document.querySelectorAll("p, span, div")
+          document.querySelectorAll("p, span, div, h3, h4")
         );
 
         for (const el of targetElements) {
           const text = el.textContent?.trim() || "";
-          const isGenericText = 
+
+          const isGenericText =
             text.includes("Browse thousands of servers") ||
             text.includes("FiveM is a modification") ||
             text.includes("Server List") ||
@@ -179,7 +183,9 @@ export async function GET(request: Request) {
               text.toLowerCase().includes("fps") ||
               text.toLowerCase().includes("roleplay") ||
               text.toLowerCase().includes("tr") ||
-              text.toLowerCase().includes("whitelist")
+              text.toLowerCase().includes("whitelist") ||
+              text.toLowerCase().includes(" sosyal ") ||
+              text.toLowerCase().includes("harika")
             ) {
               description = text;
               break;
@@ -188,6 +194,7 @@ export async function GET(request: Request) {
         }
       }
 
+      // 4. Logo Yakalama
       const imgElements = Array.from(document.querySelectorAll("img"));
       let iconUrl: string | undefined = undefined;
 
@@ -220,7 +227,7 @@ export async function GET(request: Request) {
       .replace(/Server List/i, "")
       .trim();
 
-    if (!cleanName || cleanName.includes("Access Denied")) {
+    if (!cleanName || cleanName === "Server List") {
       cleanName = "PWUC Roleplay";
     }
 
@@ -230,7 +237,7 @@ export async function GET(request: Request) {
       Data: {
         hostname: cleanName,
         clients: extractedData?.clients ?? 0,
-        sv_maxclients: extractedData?.sv_maxclients ?? 0,
+        sv_maxclients: extractedData?.sv_maxclients ?? 700,
         icon:
           extractedData?.icon ||
           `https://frontend.cfx-services.net/api/servers/icon/${id}/-543792002.png`,
