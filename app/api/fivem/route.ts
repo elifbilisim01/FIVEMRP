@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteerCore from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import path from "path";
 import os from "os";
 import fs from "fs";
 
-// FiveM renk kodlarını temizleyen yardımcı fonksiyon
 function cleanFiveMColorCodes(str: string = ""): string {
   if (!str) return "";
   return str.replace(/\^\d/g, "").trim();
@@ -29,23 +29,23 @@ export async function GET(request: Request) {
   let browser = null;
 
   try {
-    // Senin belirttiğin kesin Chrome executable yolu
-    const customChromePath = path.join(
-      process.cwd(),
-      ".cache",
-      "puppeteer",
-      "chrome",
-      "win64-151.0.7922.71",
-      "chrome-win64",
-      "chrome.exe"
-    );
+    const isVercel = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION;
 
-    // Eğer proje içinde bulunamazsa alternatif olarak genel Windows yolunu dene
-    let chromeExecutablePath = fs.existsSync(customChromePath) ? customChromePath : undefined;
+    if (isVercel) {
+      // Vercel / Serverless Ortamı
+      chromium.setHeadlessMode = true;
+      chromium.setGraphicsMode = false;
 
-    if (!chromeExecutablePath && os.platform() === "win32") {
-      const defaultWinPath = path.join(
-        os.homedir(),
+      browser = await puppeteerCore.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+      });
+    } else {
+      // Localhost Ortamı (Bilgisayarındaki indirilen Chrome'u kullanır)
+      let chromeExecutablePath = path.join(
+        process.cwd(),
         ".cache",
         "puppeteer",
         "chrome",
@@ -53,27 +53,34 @@ export async function GET(request: Request) {
         "chrome-win64",
         "chrome.exe"
       );
-      if (fs.existsSync(defaultWinPath)) {
-        chromeExecutablePath = defaultWinPath;
+
+      if (!fs.existsSync(chromeExecutablePath) && os.platform() === "win32") {
+        const defaultWinPath = path.join(
+          os.homedir(),
+          ".cache",
+          "puppeteer",
+          "chrome",
+          "win64-151.0.7922.71",
+          "chrome-win64",
+          "chrome.exe"
+        );
+        if (fs.existsSync(defaultWinPath)) {
+          chromeExecutablePath = defaultWinPath;
+        }
       }
+
+      browser = await puppeteerCore.launch({
+        executablePath: chromeExecutablePath,
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--disable-gpu",
+        ],
+      });
     }
-
-    const launchOptions: any = {
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-      ],
-    };
-
-    if (chromeExecutablePath) {
-      launchOptions.executablePath = chromeExecutablePath;
-    }
-
-    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     await page.setUserAgent(
@@ -83,11 +90,9 @@ export async function GET(request: Request) {
     const detailUrl = `https://servers.fivem.net/servers/detail/${id}`;
     await page.goto(detailUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
 
-    // Sayfadaki JS render'ı ve canlı verilerin oturması için bekleme
     await new Promise((r) => setTimeout(r, 3000));
 
     const extractedData: FiveMScrapeResult | null = await page.evaluate(() => {
-      // 1. Oyuncu Sayısını Çek
       const bodyText = document.body.innerText;
       const clientsMatch = bodyText.match(/(\d+)\s*\/\s*(\d+)/);
       let clients = 0;
@@ -98,7 +103,6 @@ export async function GET(request: Request) {
         sv_maxclients = parseInt(clientsMatch[2], 10);
       }
 
-      // 2. Sunucu İsmini Yakalama
       let rawHostname = "";
       const selectors = [
         "h1",
@@ -130,9 +134,7 @@ export async function GET(request: Request) {
         rawHostname = document.title || "";
       }
 
-      // 3. Doğru Sunucu Açıklamasını Yakalama
       let description = "";
-
       const scripts = Array.from(document.querySelectorAll('script'));
       for (const script of scripts) {
         const content = script.textContent || "";
@@ -153,7 +155,6 @@ export async function GET(request: Request) {
 
         for (const el of targetElements) {
           const text = el.textContent?.trim() || "";
-          
           const isGenericText = 
             text.includes("Browse thousands of servers") ||
             text.includes("FiveM is a modification") ||
@@ -176,7 +177,6 @@ export async function GET(request: Request) {
         }
       }
 
-      // 4. Logo Yakalama
       const imgElements = Array.from(document.querySelectorAll("img"));
       let iconUrl: string | undefined = undefined;
 
