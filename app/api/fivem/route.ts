@@ -36,7 +36,10 @@ export async function GET(request: Request) {
       chromium.setGraphicsMode = false;
 
       browser = await puppeteerCore.launch({
-        args: chromium.args,
+        args: [
+          ...chromium.args,
+          "--disable-blink-features=AutomationControlled", // Bot korumalarını bypass etmek için
+        ],
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(
           "https://github.com/Sparticuz/chromium/releases/download/v132.0.0/chromium-v132.0.0-pack.tar"
@@ -83,9 +86,16 @@ export async function GET(request: Request) {
     }
 
     const page = await browser.newPage();
+    
+    // Cloudflare/Bot engeline takılmamak için gelişmiş tarayıcı kimliği
     await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     );
+    
+    await page.setExtraHTTPHeaders({
+      "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    });
 
     const detailUrl = `https://servers.fivem.net/servers/detail/${id}`;
     await page.goto(detailUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
@@ -121,7 +131,8 @@ export async function GET(request: Request) {
             text.length > 3 &&
             !text.includes("Server List") &&
             !text.includes("FiveM Server") &&
-            !text.includes("Connect")
+            !text.includes("Connect") &&
+            !text.includes("Access Denied")
           ) {
             rawHostname = text;
             break;
@@ -130,7 +141,7 @@ export async function GET(request: Request) {
         if (rawHostname) break;
       }
 
-      if (!rawHostname) {
+      if (!rawHostname || rawHostname.includes("Access Denied")) {
         rawHostname = document.title || "";
       }
 
@@ -209,7 +220,7 @@ export async function GET(request: Request) {
       .replace(/Server List/i, "")
       .trim();
 
-    if (!cleanName) {
+    if (!cleanName || cleanName.includes("Access Denied")) {
       cleanName = "PWUC Roleplay";
     }
 
