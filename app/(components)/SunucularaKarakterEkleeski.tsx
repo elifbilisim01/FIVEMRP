@@ -54,18 +54,6 @@ const cleanFiveMString = (str?: string) => {
   return str.replace(/\^\d/g, "").trim();
 };
 
-// FiveM API'den gelen "Access Denied" gibi geçersiz/anlamsız değerleri eler.
-// Bu değerler gerçek sunucu verisi değildir, DB'ye yazılmamalı ve ekranda gösterilmemelidir.
-const isInvalidLiveValue = (val?: string) => {
-  if (!val) return true;
-  const normalized = val.trim().toLowerCase();
-  return (
-    normalized === "" ||
-    normalized === "access denied" ||
-    normalized === "accessdenied"
-  );
-};
-
 const fetchFiveMServerData = async (fivemId: string) => {
   try {
     const res = await fetch(`/api/fivem?id=${fivemId}`, {
@@ -218,6 +206,8 @@ export function SunucularaKarakterEkle({
     });
   }, [sunucular, searchQuery]);
 
+
+  
   // Sayfalandırma (Pagination) Mantığı
   const totalPages = Math.ceil(filteredSunucular.length / ITEMS_PER_PAGE);
 
@@ -226,8 +216,6 @@ export function SunucularaKarakterEkle({
     return filteredSunucular.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredSunucular, currentPage]);
 
-  // Sadece localhost'ta: FiveM'den çekilen canlı verileri DB'ye senkronize eder.
-  // "Access Denied" gibi geçersiz değerler DB'ye asla yazılmaz.
   useEffect(() => {
     const isLocalhost =
       typeof window !== "undefined" &&
@@ -236,38 +224,32 @@ export function SunucularaKarakterEkle({
 
     if (!isLocalhost) return;
 
-    if (filteredSunucular.length === 0) return;
+    if (filteredSunucular.length > 0) {
+      alert(JSON.stringify(filteredSunucular));
 
-    async function LocalHostUpdateSunucuListesi() {
-      for (const value of filteredSunucular) {
-        const hostname = !isInvalidLiveValue(value.liveData?.hostname)
-          ? value.liveData?.hostname
-          : value.sunucu_adi;
+      async function LocalHostUpdateSunucuListesi() {
+        for (const value of filteredSunucular) {
+          const pp = value.liveData?.icon ?? value.sunucu_pp;
 
-        const desc = !isInvalidLiveValue(value.liveData?.description)
-          ? value.liveData?.description
-          : value.sunucu_aciklamasi;
+          const parametersValue = [
+            value.liveData?.hostname,
+            value.liveData?.description,
+            pp, // FiveM'den gelen icon varsa onu kullan
+            value.fivem_sunucu_id,
+            value.sunucu_id,
+          ];
 
-        const pp = value.liveData?.icon ?? value.sunucu_pp;
+          const result = await runSqlCommand(
+            `UPDATE public."Sunucular" SET sunucu_adi = $1, sunucu_aciklamasi = $2, sunucu_pp = $3, fivem_sunucu_id = $4 WHERE sunucu_id = $5 RETURNING *`,
+            parametersValue,
+          );
 
-        const parametersValue = [
-          hostname,
-          desc,
-          pp,
-          value.fivem_sunucu_id,
-          value.sunucu_id,
-        ];
-
-        const result = await runSqlCommand(
-          `UPDATE public."Sunucular" SET sunucu_adi = $1, sunucu_aciklamasi = $2, sunucu_pp = $3, fivem_sunucu_id = $4 WHERE sunucu_id = $5 RETURNING *`,
-          parametersValue,
-        );
-
-        console.log("Güncellendi:", result);
+          console.log("Güncellendi:", result);
+        }
       }
+alert(console.log(filteredSunucular))
+      LocalHostUpdateSunucuListesi();
     }
-
-    LocalHostUpdateSunucuListesi();
   }, [filteredSunucular]);
 
   return (
@@ -336,18 +318,12 @@ export function SunucularaKarakterEkle({
 
                   const displayImage =
                     sunucu.liveData?.icon || sunucu.sunucu_pp;
-
-                  const displayName = !isInvalidLiveValue(
-                    sunucu.liveData?.hostname,
-                  )
-                    ? sunucu.liveData?.hostname
-                    : sunucu.sunucu_adi;
-
-                  const displayDesc = !isInvalidLiveValue(
-                    sunucu.liveData?.description,
-                  )
-                    ? sunucu.liveData?.description
-                    : sunucu.sunucu_aciklamasi || "Açıklama bulunmuyor.";
+                  const displayName =
+                    sunucu.liveData?.hostname || sunucu.sunucu_adi;
+                  const displayDesc =
+                    sunucu.liveData?.description ||
+                    sunucu.sunucu_aciklamasi ||
+                    "Açıklama bulunmuyor.";
 
                   return (
                     <div
