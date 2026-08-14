@@ -19,3 +19,13 @@ FROM icon_ranks`;
 
   return query;
 }
+
+
+
+export function yenikod() {
+  let query = `SELECT * 
+FROM icon_ranks`;
+
+  return query;
+}
+
