@@ -135,7 +135,7 @@ export function SunucularaKarakterEkle({
         dataList.map(async (sunucu) => {
           const cfxId =
             sunucu.fivem_sunucu_id ||
-            (sunucu as Record<string, unknown>).fivem_id;
+            (sunucu as unknown as Record<string, unknown>).fivem_id;
 
           if (cfxId && typeof cfxId === "string") {
             const liveData = await fetchFiveMServerData(cfxId);
